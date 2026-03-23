@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { User, Settings, Bell, Shield, LogOut, ChevronRight, Globe, Heart } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
-import { supabase } from '../lib/supabase';
 
 function Profile() {
   const navigate = useNavigate();
