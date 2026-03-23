@@ -25,6 +25,10 @@ export type Profile = {
   avatar_url?: string | null
   role: 'user' | 'moderator' | 'admin'
   provider: string
+  language?: 'ru' | 'crh'
+  phone?: string | null
+  bio?: string | null
+  village?: string | null
   created_at: string
   last_login: string
 }
@@ -92,15 +96,23 @@ export type MeetingRow = {
   village: string
   village_crh?: string
   organizer: string
-  location?: string
+  organizer_phone?: string | null
+  organizer_email?: string | null
+  location?: string | null
   meeting_date: string
-  meeting_time?: string
-  description?: string
-  fund_purpose?: string
-  fund_goal?: number
-  fund_current?: number
-  fund_progress?: number
+  meeting_time?: string | null
+  description?: string | null
+  fund_purpose?: string | null
+  fund_goal?: number | null
+  fund_current?: number | null
+  fund_progress?: number | null
+  fund_cloudtips_url?: string | null
+  fund_instructions?: string | null
+  cover_image_url?: string | null
+  is_public?: boolean
   status: 'upcoming' | 'completed' | 'cancelled'
   created_at: string
+  // from view
   attendees_count?: number
+  subscribers_count?: number
 }

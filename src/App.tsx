@@ -9,6 +9,7 @@ import RitualDetail from './pages/RitualDetail';
 import MicroYardym from './pages/MicroYardym';
 import VillageMeetings from './pages/VillageMeetings';
 import MeetingDetail from './pages/MeetingDetail';
+import MeetingEdit from './pages/MeetingEdit';
 import Notifications from './pages/Notifications';
 import Profile from './pages/Profile';
 import Login from './pages/Login';
@@ -43,7 +44,8 @@ function App() {
           <Route path="rituals/:id"   element={<RitualDetail />} />
           <Route path="micro-yardym"  element={<MicroYardym />} />
           <Route path="village-meetings" element={<VillageMeetings />} />
-          <Route path="meetings/:id"  element={<MeetingDetail />} />
+          <Route path="meetings/:id"      element={<MeetingDetail />} />
+          <Route path="meetings/:id/edit" element={<MeetingEdit />} />
           <Route path="notifications" element={<Notifications />} />
           <Route path="support"       element={<Support />} />
           <Route path="profile"       element={<Profile />} />
