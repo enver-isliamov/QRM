@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { Bell, Check, ChevronRight, CheckCheck } from 'lucide-react';
+import { Bell, ChevronRight, CheckCheck } from 'lucide-react';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { useNotifications } from '../hooks/useNotifications';
