@@ -9,9 +9,7 @@ export function useMeetings(userId?: string | null) {
 
   const fetchMeetings = async () => {
     const { data } = await supabase
-      .from('meetings_with_stats')
-      .select('*')
-      .eq('status', 'upcoming')
+      .from('meetings_with_stats').select('*').eq('status', 'upcoming')
       .order('meeting_date', { ascending: true })
     if (data) setMeetings(data as MeetingRow[])
     setLoading(false)
@@ -64,10 +62,7 @@ export function useMeetings(userId?: string | null) {
 
   const addMeeting = async (data: Partial<MeetingRow>, authorId: string) => {
     const { data: inserted, error } = await supabase
-      .from('meetings')
-      .insert({ ...data, author_id: authorId })
-      .select()
-      .single()
+      .from('meetings').insert({ ...data, author_id: authorId }).select().single()
     if (inserted && !error) await fetchMeetings()
     return { data: inserted, error }
   }
@@ -78,10 +73,12 @@ export function useMeetings(userId?: string | null) {
     return { error }
   }
 
-  return { meetings, loading, toggleAttend, toggleSubscribe, addMeeting, updateMeeting,
-           isGoing: (id: string) => attending.has(id),
-           isSubscribed: (id: string) => subscribed.has(id),
-           refresh: fetchMeetings }
+  return {
+    meetings, loading, toggleAttend, toggleSubscribe, addMeeting, updateMeeting,
+    isGoing: (id: string) => attending.has(id),
+    isSubscribed: (id: string) => subscribed.has(id),
+    refresh: fetchMeetings,
+  }
 }
 
 export function useMeetingDetail(id: string | undefined) {
@@ -95,13 +92,10 @@ export function useMeetingDetail(id: string | undefined) {
       supabase.from('meetings_with_stats').select('*').eq('id', id).single(),
       supabase.from('meeting_attendees')
         .select('user_id, profiles(id, name, avatar_url)')
-        .eq('meeting_id', id)
-        .limit(20),
+        .eq('meeting_id', id).limit(20),
     ]).then(([mRes, pRes]) => {
       if (mRes.data) setMeeting(mRes.data as MeetingRow)
-      if (pRes.data) {
-        setParticipants(pRes.data.map((r: any) => r.profiles).filter(Boolean))
-      }
+      if (pRes.data) setParticipants(pRes.data.map((r: any) => r.profiles).filter(Boolean))
       setLoading(false)
     })
   }, [id])

@@ -3,8 +3,7 @@ import { Heart, Phone, MapPin, AlertCircle, Plus, X, Droplets, Banknote, HelpCir
 import { format } from 'date-fns';
 import { useHelpRequests } from '../hooks/useHelpRequests';
 import { useAuth } from '../hooks/useAuth';
-import { HelpRequestRow } from '../lib/supabase';
-import { supabase } from '../lib/supabase';
+import { HelpRequestRow, supabase } from '../lib/supabase';
 
 type NewReq = { type: 'blood' | 'money' | 'other'; urgency: 'urgent' | 'normal'; title: string; location: string; description: string; contact_phone: string };
 
