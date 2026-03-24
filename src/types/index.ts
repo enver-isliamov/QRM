@@ -18,3 +18,26 @@ export interface RitualStep {
   title: string; titleCrh: string;
   description: string; descriptionCrh: string;
 }
+export interface User {
+  id: string;
+  name?: string;
+  [key: string]: any; // Позволяет добавлять любые другие поля временно
+}
+
+export interface HelpRequest {
+  id: string;
+  title?: string;
+  [key: string]: any;
+}
+
+export interface VillageMeeting {
+  id: string;
+  title?: string;
+  [key: string]: any;
+}
+
+export interface Notification {
+  id: string;
+  message?: string;
+  [key: string]: any;
+}
