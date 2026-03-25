@@ -1,16 +1,18 @@
 import { useNavigate, useLocation } from 'react-router-dom'
 import { Home, Clock, Heart, MapPin, Grid3X3 } from 'lucide-react'
 import { useStore } from '../store/useStore'
+import { useTranslation } from 'react-i18next'
 
 export default function BottomNavigation() {
   const navigate = useNavigate()
   const location = useLocation()
   const { featureToggles } = useStore()
+  const { t } = useTranslation()
 
   const navItems = [
-    { path: '/',               label: 'Главная',  icon: Home,     show: true },
-    { path: '/prayer-times',   label: 'Намазы',   icon: Clock,    show: true },
-    { path: '/micro-yardym',   label: 'Ярдым',    icon: Heart,    show: featureToggles.yardym },
+    { path: '/',               label: t('nav.home'),  icon: Home,     show: true },
+    { path: '/prayer-times',   label: t('nav.namaz'),   icon: Clock,    show: true },
+    { path: '/micro-yardym',   label: t('nav.yardym'),    icon: Heart,    show: featureToggles.yardym },
     { path: '/village-meetings', label: 'Встречи', icon: MapPin,   show: featureToggles.meetings },
     { path: '/sections',       label: 'Разделы',  icon: Grid3X3,  show: true },
   ]

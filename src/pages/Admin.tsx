@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Users, Shield, Settings, BarChart3, ChevronLeft, Edit, Trash2, Plus, X, Check, Save, BookOpen, ToggleRight } from 'lucide-react'
+import { Users, Shield, Settings, BarChart3, ChevronLeft, Edit, Trash2, Plus, X, Check, Save, BookOpen, ToggleRight, ChevronRight } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import { useStore } from '../store/useStore'
+import useSWR from 'swr'
 
 type Tab = 'stats' | 'users' | 'events' | 'help' | 'meetings' | 'rituals' | 'settings' | 'moderation'
 type UserRow = { id: string; name: string; avatar_url?: string; role: string; provider: string; created_at: string }
@@ -14,6 +15,22 @@ type RitualRow = { id: string; title: string; title_crh?: string; subtitle?: str
 type ReportRow = { id: string; reporter_id: string; target_type: string; target_id: string; reason: string; description?: string; status: string; created_at: string }
 type AuditLogRow = { id: string; admin_id: string; action: string; target_type: string; target_id: string; created_at: string; admin?: { name: string; email: string } }
 
+const fetcher = async (key: string) => {
+  const [table, pageStr, limitStr] = key.split(':');
+  const page = parseInt(pageStr, 10);
+  const limit = parseInt(limitStr, 10);
+  const from = (page - 1) * limit;
+  const to = from + limit - 1;
+
+  const { data, count } = await supabase
+    .from(table)
+    .select('*', { count: 'exact' })
+    .order('created_at', { ascending: false })
+    .range(from, to);
+    
+  return { data, count };
+};
+
 export default function Admin() {
   const navigate = useNavigate()
   const { profile } = useAuth()
@@ -21,7 +38,6 @@ export default function Admin() {
   const isModerator = profile?.role === 'moderator'
   const [tab, setTab] = useState<Tab>(isModerator ? 'moderation' : 'stats')
   const [stats, setStats] = useState<Record<string, number>>({})
-  const [users, setUsers] = useState<UserRow[]>([])
   const [events, setEvents] = useState<EventRow[]>([])
   const [helpReqs, setHelpReqs] = useState<HelpRow[]>([])
   const [meetingList, setMeetingList] = useState<MeetRow[]>([])
@@ -34,6 +50,15 @@ export default function Admin() {
   const [editRitual, setEditRitual] = useState<Partial<RitualRow> | null>(null)
   const [toast, setToast] = useState('')
 
+  // Pagination state for users
+  const [usersPage, setUsersPage] = useState(1);
+  const usersLimit = 10;
+  
+  const { data: usersData, mutate: mutateUsers } = useSWR(
+    tab === 'users' && !isModerator ? `profiles:${usersPage}:${usersLimit}` : null,
+    fetcher
+  );
+
   const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(''), 2500) }
 
   useEffect(() => { loadTab(tab) }, [tab])
@@ -43,10 +68,6 @@ export default function Admin() {
     if (t === 'stats' && !isModerator) {
       const { data } = await supabase.from('admin_stats').select('*').single()
       if (data) setStats(data as any)
-    }
-    if (t === 'users' && !isModerator) {
-      const { data } = await supabase.from('profiles').select('*').order('created_at', { ascending: false })
-      if (data) setUsers(data as UserRow[])
     }
     if (t === 'events') {
       const { data } = await supabase.from('ethno_events').select('*').order('event_date')
@@ -132,7 +153,9 @@ export default function Admin() {
       return
     }
     await logAudit('update_role', 'profiles', uid)
-    setUsers(prev => prev.map(u => u.id === uid ? { ...u, role } : u))
+    if (usersData) {
+      mutateUsers()
+    }
     setEditUser(null); showToast('Роль изменена ✓')
   }
 
@@ -222,33 +245,62 @@ export default function Admin() {
         )}
 
         {/* USERS */}
-        {!loading && tab === 'users' && (
+        {!loading && tab === 'users' && !isModerator && (
           <div className="space-y-3">
-            {users.map(u => (
-              <div key={u.id} className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center font-semibold text-purple-600">
-                      {u.name?.[0]?.toUpperCase() ?? '?'}
-                    </div>
-                    <div>
-                      <p className="font-semibold text-gray-800">{u.name || 'Без имени'}</p>
-                      <p className="text-xs text-gray-400">{u.provider} · {new Date(u.created_at).toLocaleDateString('ru-RU')}</p>
+            {!usersData ? (
+              <div className="text-center py-4 text-gray-500">Загрузка...</div>
+            ) : (
+              <>
+                {usersData.data?.map(u => (
+                  <div key={u.id} className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center font-semibold text-purple-600">
+                          {u.name?.[0]?.toUpperCase() ?? '?'}
+                        </div>
+                        <div>
+                          <p className="font-semibold text-gray-800">{u.name || 'Без имени'}</p>
+                          <p className="text-xs text-gray-400">{u.provider} · {new Date(u.created_at).toLocaleDateString('ru-RU')}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className={`text-xs px-2 py-0.5 rounded-full ${
+                          u.role === 'admin' ? 'bg-purple-100 text-purple-700'
+                            : u.role === 'moderator' ? 'bg-blue-100 text-blue-700'
+                            : 'bg-gray-100 text-gray-600'
+                        }`}>{u.role === 'admin' ? 'Админ' : u.role === 'moderator' ? 'Мод.' : 'Польз.'}</span>
+                        <button onClick={() => setEditUser(u as UserRow)} className="p-1.5 hover:bg-gray-100 rounded-lg">
+                          <Edit className="w-4 h-4 text-gray-400" />
+                        </button>
+                      </div>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className={`text-xs px-2 py-0.5 rounded-full ${
-                      u.role === 'admin' ? 'bg-purple-100 text-purple-700'
-                        : u.role === 'moderator' ? 'bg-blue-100 text-blue-700'
-                        : 'bg-gray-100 text-gray-600'
-                    }`}>{u.role === 'admin' ? 'Админ' : u.role === 'moderator' ? 'Мод.' : 'Польз.'}</span>
-                    <button onClick={() => setEditUser(u)} className="p-1.5 hover:bg-gray-100 rounded-lg">
-                      <Edit className="w-4 h-4 text-gray-400" />
+                ))}
+                
+                {/* Pagination Controls */}
+                {usersData.count && usersData.count > usersLimit && (
+                  <div className="flex items-center justify-between bg-white p-4 rounded-xl shadow-sm border border-gray-100 mt-4">
+                    <button 
+                      onClick={() => setUsersPage(p => Math.max(1, p - 1))}
+                      disabled={usersPage === 1}
+                      className="p-2 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <ChevronLeft className="w-5 h-5 text-gray-600" />
+                    </button>
+                    <span className="text-sm text-gray-600 font-medium">
+                      Страница {usersPage} из {Math.ceil(usersData.count / usersLimit)}
+                    </span>
+                    <button 
+                      onClick={() => setUsersPage(p => p + 1)}
+                      disabled={usersPage >= Math.ceil(usersData.count / usersLimit)}
+                      className="p-2 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <ChevronRight className="w-5 h-5 text-gray-600" />
                     </button>
                   </div>
-                </div>
-              </div>
-            ))}
+                )}
+              </>
+            )}
           </div>
         )}
 

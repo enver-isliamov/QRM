@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { User, Settings, Bell, Shield, LogOut, ChevronRight, Globe, Heart, Star, Activity } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../lib/supabase';
+import { useTranslation } from 'react-i18next';
 
 function Profile() {
   const navigate = useNavigate();
@@ -11,7 +12,12 @@ function Profile() {
   const [showSettings, setShowSettings] = useState(false);
   const [showNotifSettings, setShowNotifSettings] = useState(false);
   const [showSecurity, setShowSecurity] = useState(false);
-  const [language, setLanguageState] = useState<'ru' | 'crh'>('ru');
+  const { i18n } = useTranslation();
+  const language = i18n.language as 'ru' | 'crh';
+
+  const setLanguageState = (lang: 'ru' | 'crh') => {
+    i18n.changeLanguage(lang);
+  };
   
   const [stats, setStats] = useState({
     helpResponses: 0,
