@@ -1,243 +1,126 @@
-import { useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { User, MessageCircle } from 'lucide-react';
-import { useStore } from '../store/useStore';
-import { User as UserType } from '../types';
-
-declare global {
-  interface Window {
-    google?: {
-      accounts: {
-        id: {
-          initialize: (config: any) => void;
-          renderButton: (element: HTMLElement, config: any) => void;
-        };
-      };
-    };
-    onTelegramAuth?: (user: any) => void;
-  }
-}
-
-// Get environment variables
-const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
-const TELEGRAM_BOT_NAME = import.meta.env.VITE_TELEGRAM_BOT_NAME || '';
+import { Mail, Loader2, CheckCircle, Chrome } from 'lucide-react';
+import { useAuth } from '../hooks/useAuth';
 
 function Login() {
   const navigate = useNavigate();
-  const { login, isAuthenticated } = useStore();
-  const googleButtonRef = useRef<HTMLDivElement>(null);
-  const telegramContainerRef = useRef<HTMLDivElement>(null);
-  
-  // Redirect if already authenticated
+  const { isAuthenticated, signInWithMagicLink, signInWithGoogle } = useAuth();
+  const [email, setEmail] = useState('');
+  const [sent, setSent] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
   useEffect(() => {
-    if (isAuthenticated) {
-      navigate('/profile');
-    }
+    if (isAuthenticated) navigate('/profile', { replace: true });
   }, [isAuthenticated, navigate]);
-  
-  // Handle Telegram auth callback
-  const handleTelegramAuth = useCallback((user: any) => {
-    const mockUser: UserType = {
-      id: 'telegram_' + user.id,
-      email: user.username ? `${user.username}@telegram.org` : `telegram_${user.id}@user.org`,
-      name: user.first_name + (user.last_name ? ' ' + user.last_name : ''),
-      avatar: user.photo_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.first_name)}&background=0088cc&color=fff`,
-      role: 'user',
-      provider: 'telegram',
-      createdAt: new Date().toISOString(),
-      lastLogin: new Date().toISOString()
-    };
-    
-    login(mockUser);
-    navigate('/profile');
-  }, [login, navigate]);
-  
-  // Expose callback to window for Telegram widget
-  useEffect(() => {
-    window.onTelegramAuth = handleTelegramAuth;
-    return () => {
-      delete window.onTelegramAuth;
-    };
-  }, [handleTelegramAuth]);
-  
-  // Initialize Google Sign-In
-  useEffect(() => {
-    if (GOOGLE_CLIENT_ID && window.google && googleButtonRef.current) {
-      window.google.accounts.id.initialize({
-        client_id: GOOGLE_CLIENT_ID,
-        callback: handleGoogleCallback,
-        auto_select: false,
-        cancel_on_tap_outside: true,
-      });
-      
-      window.google.accounts.id.renderButton(googleButtonRef.current, {
-        theme: 'outline',
-        size: 'large',
-        width: '100%',
-        text: 'signin_with',
-        shape: 'pill',
-      });
+
+  const handleMagicLink = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email) return;
+    setLoading(true);
+    setError('');
+    const { error } = await signInWithMagicLink(email);
+    setLoading(false);
+    if (error) {
+      setError(error.message);
+    } else {
+      setSent(true);
     }
-  }, []);
-  
-  const handleGoogleCallback = (_response: any) => {
-    const mockUser: UserType = {
-      id: 'google_' + Date.now(),
-      email: 'user@gmail.com',
-      name: 'Пользователь Google',
-      avatar: 'https://ui-avatars.com/api/?name=Google+User&background=10B981&color=fff',
-      role: 'user',
-      provider: 'google',
-      createdAt: new Date().toISOString(),
-      lastLogin: new Date().toISOString()
-    };
-    
-    login(mockUser);
-    navigate('/profile');
   };
-  
-  // Demo login for testing
-  const handleDemoLogin = () => {
-    const demoUser: UserType = {
-      id: 'demo_' + Date.now(),
-      email: 'demo@oraza.ru',
-      name: 'Демо Пользователь',
-      avatar: 'https://ui-avatars.com/api/?name=Demo+User&background=10B981&color=fff',
-      role: 'user',
-      provider: 'email',
-      createdAt: new Date().toISOString(),
-      lastLogin: new Date().toISOString()
-    };
-    
-    login(demoUser);
-    navigate('/profile');
+
+  const handleGoogle = async () => {
+    setLoading(true);
+    const { error } = await signInWithGoogle();
+    if (error) { setError(error.message); setLoading(false); }
   };
-  
-  // Demo admin login for testing
-  const handleAdminLogin = () => {
-    const adminUser: UserType = {
-      id: 'admin_1',
-      email: 'admin@oraza.ru',
-      name: 'Администратор',
-      avatar: 'https://ui-avatars.com/api/?name=Admin&background=9333EA&color=fff',
-      role: 'admin',
-      provider: 'email',
-      createdAt: new Date().toISOString(),
-      lastLogin: new Date().toISOString()
-    };
-    
-    login(adminUser);
-    navigate('/admin');
-  };
-  
+
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
-      {/* Header */}
       <div className="bg-white px-4 py-4 border-b border-gray-200">
         <button onClick={() => navigate('/')} className="text-gray-600 flex items-center gap-1">
-          <span>←</span>
-          <span>На главную</span>
+          <span>←</span><span>На главную</span>
         </button>
       </div>
-      
+
       <div className="flex-1 flex items-center justify-center p-4">
         <div className="w-full max-w-sm">
-          {/* Logo */}
+
           <div className="text-center mb-8">
             <div className="w-20 h-20 bg-emerald-500 rounded-2xl flex items-center justify-center mx-auto mb-4">
-              <User className="w-10 h-10 text-white" />
+              <span className="text-3xl text-white font-bold">О</span>
             </div>
             <h1 className="text-2xl font-bold text-gray-800">Вход в ORAZA</h1>
             <p className="text-gray-500 mt-1">Выберите способ авторизации</p>
           </div>
-          
-          {/* Login Options */}
-          <div className="space-y-4">
-            {/* Google Sign-In */}
-            {GOOGLE_CLIENT_ID ? (
-              <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
-                <div ref={googleButtonRef} className="google-login-button" />
-              </div>
-            ) : (
-              <div className="bg-gray-50 rounded-xl p-4 border border-gray-200 text-center">
-                <p className="text-sm text-gray-500">Google авторизация не настроена</p>
-                <p className="text-xs text-gray-400 mt-1">Добавьте VITE_GOOGLE_CLIENT_ID в переменные окружения</p>
-              </div>
-            )}
-            
-            {/* Telegram Login */}
-            {TELEGRAM_BOT_NAME ? (
-              <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 flex justify-center">
-                <div ref={telegramContainerRef}>
-                  {/* Telegram OAuth Widget */}
-                  <div 
-                    dangerouslySetInnerHTML={{
-                      __html: `<script async src="https://oauth.telegram.org/js/telegram-login.js?3" 
-                        data-client-id="${TELEGRAM_BOT_NAME}" 
-                        data-onauth="window.onTelegramAuth(user)" 
-                        data-request-access="write"
-                        data-userpic="true"
-                        data-lang="ru"
-                        data-radius="12"
-                        data-size="large"
-                      ></script>`
-                    }}
-                  />
-                  {/* Fallback button if widget doesn't load */}
-                  <button 
-                    className="tg-auth-button w-full bg-[#0088cc] text-white rounded-xl px-4 py-4 flex items-center justify-center gap-3 hover:bg-[#0077b3] transition-colors mt-2"
-                    onClick={() => {
-                      handleTelegramAuth({
-                        id: 123456789,
-                        first_name: 'Telegram',
-                        last_name: 'User',
-                        username: 'telegram_user',
-                        photo_url: 'https://ui-avatars.com/api/?name=Telegram+User&background=0088cc&color=fff'
-                      });
-                    }}
-                  >
-                    <MessageCircle className="w-6 h-6" />
-                    <span className="font-medium">Войти через Telegram</span>
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div className="bg-gray-50 rounded-xl p-4 border border-gray-200 text-center">
-                <p className="text-sm text-gray-500">Telegram авторизация не настроена</p>
-                <p className="text-xs text-gray-400 mt-1">Добавьте VITE_TELEGRAM_BOT_NAME в переменные окружения</p>
-              </div>
-            )}
-            
-            {/* Divider */}
-            <div className="flex items-center gap-4 my-4">
-              <div className="flex-1 h-px bg-gray-200" />
-              <span className="text-sm text-gray-400">или</span>
-              <div className="flex-1 h-px bg-gray-200" />
+
+          {sent ? (
+            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 text-center">
+              <CheckCircle className="w-14 h-14 text-emerald-500 mx-auto mb-4" />
+              <h2 className="text-xl font-bold text-gray-800 mb-2">Письмо отправлено!</h2>
+              <p className="text-gray-600 mb-4">
+                Мы отправили ссылку для входа на <strong>{email}</strong>. Проверьте почту (и папку «Спам»).
+              </p>
+              <button onClick={() => setSent(false)} className="text-emerald-600 text-sm hover:underline">
+                Изменить адрес
+              </button>
             </div>
-            
-            {/* Demo Login */}
-            <button
-              onClick={handleDemoLogin}
-              className="w-full bg-emerald-500 text-white rounded-xl px-4 py-4 font-medium hover:bg-emerald-600 transition-colors"
-            >
-              Демо вход (Пользователь)
-            </button>
-            
-            <button
-              onClick={handleAdminLogin}
-              className="w-full bg-purple-500 text-white rounded-xl px-4 py-4 font-medium hover:bg-purple-600 transition-colors"
-            >
-              Демо вход (Админ)
-            </button>
-          </div>
-          
-          {/* Info */}
-          <div className="mt-8 text-center">
-            <p className="text-sm text-gray-500">
-              Авторизуясь, вы соглашаетесь с{' '}
-              <a href="#" className="text-emerald-600 hover:underline">
-                условиями использования
-              </a>
+          ) : (
+            <div className="space-y-4">
+
+              {/* Google */}
+              <button onClick={handleGoogle} disabled={loading}
+                className="w-full bg-white border border-gray-200 rounded-xl px-4 py-4 flex items-center justify-center gap-3 hover:bg-gray-50 transition-colors shadow-sm disabled:opacity-60">
+                <Chrome className="w-5 h-5 text-blue-500" />
+                <span className="font-medium text-gray-800">Войти через Google</span>
+              </button>
+
+              <div className="flex items-center gap-4">
+                <div className="flex-1 h-px bg-gray-200" />
+                <span className="text-sm text-gray-400">или по email</span>
+                <div className="flex-1 h-px bg-gray-200" />
+              </div>
+
+              {/* Magic Link */}
+              <form onSubmit={handleMagicLink} className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Email адрес</label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                    <input
+                      type="email"
+                      value={email}
+                      onChange={e => setEmail(e.target.value)}
+                      placeholder="your@email.com"
+                      className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                      required
+                    />
+                  </div>
+                </div>
+
+                {error && (
+                  <p className="text-sm text-rose-600 bg-rose-50 border border-rose-200 rounded-lg px-3 py-2">
+                    {error}
+                  </p>
+                )}
+
+                <button type="submit" disabled={loading || !email}
+                  className="w-full bg-emerald-500 text-white rounded-xl py-3 font-medium hover:bg-emerald-600 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center justify-center gap-2">
+                  {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : null}
+                  {loading ? 'Отправка...' : 'Получить ссылку для входа'}
+                </button>
+
+                <p className="text-xs text-gray-500 text-center">
+                  Мы вышлем магическую ссылку — пароль не нужен
+                </p>
+              </form>
+            </div>
+          )}
+
+          <div className="mt-6 text-center">
+            <p className="text-xs text-gray-400">
+              Авторизуясь, вы принимаете{' '}
+              <a href="#" className="text-emerald-600 hover:underline">условия использования</a>
             </p>
           </div>
         </div>
