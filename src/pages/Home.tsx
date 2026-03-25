@@ -1,17 +1,20 @@
 import { useNavigate } from 'react-router-dom'
-import { ChevronRight, Clock, MapPin, Heart, AlertCircle } from 'lucide-react'
+import { ChevronRight, Clock, MapPin, Heart, AlertCircle, Share2 } from 'lucide-react'
 import { useEthnoEvents } from '../hooks/useEthnoEvents'
 import { usePrayerTimesForDate } from '../hooks/usePrayerTimes'
 import { useHelpRequests } from '../hooks/useHelpRequests'
 import { useMeetings } from '../hooks/useMeetings'
 import { useAuth } from '../hooks/useAuth'
+import { useStore } from '../store/useStore'
 import { prayerNames } from '../data/prayerTimes'
 import { format } from 'date-fns'
 import { ru } from 'date-fns/locale'
+import PwaInstallPrompt from '../components/PwaInstallPrompt'
 
 export default function Home() {
   const navigate = useNavigate()
   const { user } = useAuth()
+  const { featureToggles } = useStore()
   const { upcoming } = useEthnoEvents()
   const { prayers } = usePrayerTimesForDate(new Date())
   const { urgent } = useHelpRequests()
@@ -21,8 +24,29 @@ export default function Home() {
   const urgentHelp = urgent[0]
   const upcomingMeeting = meetings[0]
 
+  const handleShare = async () => {
+    const shareData = {
+      title: 'ORAZA',
+      text: 'Присоединяйся к крымскотатарскому приложению ORAZA! Расписание намазов, этно-календарь и взаимопомощь.',
+      url: window.location.origin,
+    }
+    if (navigator.share) {
+      try {
+        await navigator.share(shareData)
+      } catch (err) {
+        console.log('Share canceled or failed', err)
+      }
+    } else {
+      navigator.clipboard.writeText(window.location.origin)
+      alert('Ссылка скопирована в буфер обмена!')
+    }
+  }
+
   return (
     <div className="animate-fade-in pb-4">
+      
+      {/* PWA Install Prompt */}
+      <PwaInstallPrompt />
 
       {/* Prayer Card */}
       <div className="px-4 pt-4">
@@ -143,11 +167,11 @@ export default function Home() {
         <p className="font-semibold text-gray-800 mb-3">Разделы</p>
         <div className="grid grid-cols-2 gap-3">
           {[
-            { path: '/village-meetings', emoji: '🏘️', title: 'Встречи сёл',   sub: 'События и сборы' },
-            { path: '/micro-yardym',     emoji: '🤝', title: 'Микро-Ярдым',   sub: 'Взаимопомощь' },
-            { path: '/ethno-calendar',   emoji: '📅', title: 'Этно-календарь', sub: 'Праздники' },
-            { path: '/rituals',          emoji: '📖', title: 'Обряды',         sub: 'Никях, Дженазе' },
-          ].map(({ path, emoji, title, sub }) => (
+            { path: '/village-meetings', emoji: '🏘️', title: 'Встречи сёл',   sub: 'События и сборы', show: featureToggles.meetings },
+            { path: '/micro-yardym',     emoji: '🤝', title: 'Микро-Ярдым',   sub: 'Взаимопомощь', show: featureToggles.yardym },
+            { path: '/ethno-calendar',   emoji: '📅', title: 'Этно-календарь', sub: 'Праздники', show: featureToggles.calendar },
+            { path: '/rituals',          emoji: '📖', title: 'Обряды',         sub: 'Никях, Дженазе', show: featureToggles.rituals },
+          ].filter(item => item.show).map(({ path, emoji, title, sub }) => (
             <button key={path} onClick={() => navigate(path)}
               className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 text-left touch-feedback hover:border-emerald-200 transition-colors">
               <div className="text-2xl mb-2">{emoji}</div>
@@ -157,6 +181,40 @@ export default function Home() {
           ))}
         </div>
       </div>
+
+      {/* Share Block */}
+      <div className="px-4 pt-4">
+        <button onClick={handleShare} className="w-full bg-blue-50 border border-blue-200 rounded-2xl p-4 text-left touch-feedback flex items-center gap-4 hover:bg-blue-100 transition-colors">
+          <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+            <Share2 className="w-6 h-6 text-blue-600" />
+          </div>
+          <div>
+            <h3 className="font-semibold text-blue-900">Поделиться с близкими</h3>
+            <p className="text-xs text-blue-700 mt-0.5 leading-relaxed">Расскажите об ORAZA родным — это поможет нашему сообществу расти.</p>
+          </div>
+        </button>
+      </div>
+
+      {/* Support Block */}
+      <div className="px-4 pt-4">
+        <div className="bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-2xl p-5 text-white shadow-md relative overflow-hidden">
+          <div className="relative z-10">
+            <div className="flex items-center gap-2 mb-2">
+              <Heart className="w-5 h-5 text-emerald-200" />
+              <h3 className="font-bold text-lg">Поддержите проект</h3>
+            </div>
+            <p className="text-sm text-emerald-50 mb-4 leading-relaxed">
+              ORAZA существует и развивается благодаря вашей поддержке. Внесите свой вклад в сохранение наших традиций.
+            </p>
+            <button onClick={() => navigate('/support')} className="bg-white text-emerald-600 font-semibold py-2.5 px-5 rounded-xl text-sm hover:bg-emerald-50 transition-colors w-full sm:w-auto text-center touch-feedback shadow-sm">
+              Поддержать ORAZA
+            </button>
+          </div>
+          <div className="absolute -bottom-6 -right-6 w-32 h-32 bg-white opacity-10 rounded-full blur-2xl"></div>
+          <div className="absolute -top-6 -left-6 w-24 h-24 bg-white opacity-10 rounded-full blur-xl"></div>
+        </div>
+      </div>
+
     </div>
   )
 }

@@ -17,6 +17,7 @@ import Login from './pages/Login'
 import AuthCallback from './pages/AuthCallback'
 import Support from './pages/Support'
 import Admin from './pages/Admin'
+import YandexMetrika from './components/YandexMetrika'
 import './index.css'
 
 function ProtectedRoute({ children, requireAdmin = false }: { children: React.ReactNode; requireAdmin?: boolean }) {
@@ -34,6 +35,7 @@ function ProtectedRoute({ children, requireAdmin = false }: { children: React.Re
 export default function App() {
   return (
     <Router>
+      <YandexMetrika />
       <Routes>
         <Route path="/login"         element={<Login />} />
         <Route path="/auth/callback" element={<AuthCallback />} />

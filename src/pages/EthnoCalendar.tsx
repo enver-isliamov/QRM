@@ -143,7 +143,7 @@ function EthnoCalendar() {
       </div>
 
       {selectedEvent && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center modal-overlay" onClick={() => setSelectedEvent(null)}>
+        <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center modal-overlay" onClick={() => setSelectedEvent(null)}>
           <div className="bg-white w-full max-w-md rounded-t-2xl sm:rounded-2xl p-6 animate-slide-up" onClick={e => e.stopPropagation()}>
             <div className="flex items-start gap-4 mb-4">
               <div className="flex-shrink-0 text-center bg-emerald-50 rounded-xl p-3">

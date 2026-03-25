@@ -1,27 +1,32 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Users, Shield, Settings, BarChart3, ChevronLeft, Edit, Trash2, Plus, X, Check, Save } from 'lucide-react'
+import { Users, Shield, Settings, BarChart3, ChevronLeft, Edit, Trash2, Plus, X, Check, Save, BookOpen, ToggleRight } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
+import { useStore } from '../store/useStore'
 
-type Tab = 'stats' | 'users' | 'events' | 'help' | 'meetings'
+type Tab = 'stats' | 'users' | 'events' | 'help' | 'meetings' | 'rituals' | 'settings'
 type UserRow = { id: string; name: string; avatar_url?: string; role: string; provider: string; created_at: string }
 type EventRow = { id: string; event_date: string; title: string; title_crh?: string; description?: string; description_crh?: string; type: string }
 type HelpRow  = { id: string; title: string; type: string; urgency: string; status: string; location: string; created_at: string; responses_count?: number }
 type MeetRow  = { id: string; village: string; organizer: string; meeting_date: string; status: string; attendees_count?: number }
+type RitualRow = { id: string; title: string; title_crh?: string; subtitle?: string; subtitle_crh?: string; icon?: string; sort_order?: number }
 
 export default function Admin() {
   const navigate = useNavigate()
   const { profile } = useAuth()
+  const { featureToggles, setFeatureToggle } = useStore()
   const [tab, setTab] = useState<Tab>('stats')
   const [stats, setStats] = useState<Record<string, number>>({})
   const [users, setUsers] = useState<UserRow[]>([])
   const [events, setEvents] = useState<EventRow[]>([])
   const [helpReqs, setHelpReqs] = useState<HelpRow[]>([])
   const [meetingList, setMeetingList] = useState<MeetRow[]>([])
+  const [rituals, setRituals] = useState<RitualRow[]>([])
   const [loading, setLoading] = useState(false)
   const [editEvent, setEditEvent] = useState<Partial<EventRow> | null>(null)
   const [editUser, setEditUser] = useState<UserRow | null>(null)
+  const [editRitual, setEditRitual] = useState<Partial<RitualRow> | null>(null)
   const [toast, setToast] = useState('')
 
   const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(''), 2500) }
@@ -50,6 +55,10 @@ export default function Admin() {
       const { data } = await supabase.from('meetings_with_stats').select('*').order('meeting_date', { ascending: false })
       if (data) setMeetingList(data as MeetRow[])
     }
+    if (t === 'rituals') {
+      const { data } = await supabase.from('rituals').select('*').order('sort_order')
+      if (data) setRituals(data as RitualRow[])
+    }
     setLoading(false)
   }
 
@@ -64,6 +73,19 @@ export default function Admin() {
     if (!confirm('Удалить событие?')) return
     await supabase.from('ethno_events').delete().eq('id', id)
     loadTab('events'); showToast('Удалено')
+  }
+
+  const saveRitual = async () => {
+    if (!editRitual) return
+    if (editRitual.id) await supabase.from('rituals').update(editRitual).eq('id', editRitual.id)
+    else await supabase.from('rituals').insert(editRitual)
+    setEditRitual(null); loadTab('rituals'); showToast('Обряд сохранен ✓')
+  }
+
+  const deleteRitual = async (id: string) => {
+    if (!confirm('Удалить обряд?')) return
+    await supabase.from('rituals').delete().eq('id', id)
+    loadTab('rituals'); showToast('Удалено')
   }
 
   const updateUserRole = async (uid: string, role: string) => {
@@ -83,6 +105,8 @@ export default function Admin() {
     { id: 'events'   as Tab, label: 'Календарь',    icon: Settings },
     { id: 'help'     as Tab, label: 'Ярдым',         icon: Shield },
     { id: 'meetings' as Tab, label: 'Встречи',       icon: Settings },
+    { id: 'rituals'  as Tab, label: 'Обряды',        icon: BookOpen },
+    { id: 'settings' as Tab, label: 'Настройки',     icon: ToggleRight },
   ]
 
   const statCards = [
@@ -267,11 +291,78 @@ export default function Admin() {
             ))}
           </div>
         )}
+
+        {/* RITUALS */}
+        {!loading && tab === 'rituals' && (
+          <div>
+            <button onClick={() => setEditRitual({})}
+              className="flex items-center gap-2 bg-emerald-500 text-white px-4 py-2.5 rounded-xl text-sm font-medium mb-4 hover:bg-emerald-600">
+              <Plus className="w-4 h-4" />Добавить обряд
+            </button>
+            <div className="space-y-3">
+              {rituals.map(r => (
+                <div key={r.id} className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1 min-w-0 flex items-center gap-3">
+                      <div className="text-2xl">{r.icon || '📖'}</div>
+                      <div>
+                        <p className="font-semibold text-gray-800">{r.title}</p>
+                        {r.subtitle && <p className="text-sm text-gray-500 mt-0.5">{r.subtitle}</p>}
+                      </div>
+                    </div>
+                    <div className="flex gap-1 ml-2 flex-shrink-0">
+                      <button onClick={() => setEditRitual(r)} className="p-1.5 hover:bg-gray-100 rounded-lg">
+                        <Edit className="w-4 h-4 text-gray-400" />
+                      </button>
+                      <button onClick={() => deleteRitual(r.id)} className="p-1.5 hover:bg-rose-50 rounded-lg">
+                        <Trash2 className="w-4 h-4 text-rose-400" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* SETTINGS / FEATURE TOGGLES */}
+        {!loading && tab === 'settings' && (
+          <div className="space-y-4">
+            <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+              <h2 className="font-semibold text-gray-800 mb-4">Управление разделами (Feature Toggles)</h2>
+              <p className="text-sm text-gray-500 mb-4">
+                Включайте и отключайте разделы в приложении. Это полезно для безопасного тестирования новых функций на проде.
+              </p>
+              <div className="space-y-3">
+                {([
+                  { id: 'meetings', label: 'Встречи сёл' },
+                  { id: 'yardym', label: 'Микро-Ярдым' },
+                  { id: 'calendar', label: 'Этно-календарь' },
+                  { id: 'rituals', label: 'Обряды' }
+                ] as const).map(({ id, label }) => (
+                  <div key={id} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
+                    <span className="text-gray-700 font-medium">{label}</span>
+                    <button
+                      onClick={() => setFeatureToggle(id, !featureToggles[id])}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                        featureToggles[id] ? 'bg-emerald-500' : 'bg-gray-200'
+                      }`}
+                    >
+                      <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                        featureToggles[id] ? 'translate-x-6' : 'translate-x-1'
+                      }`} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Edit Event Modal */}
       {editEvent && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center modal-overlay" onClick={() => setEditEvent(null)}>
+        <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center modal-overlay" onClick={() => setEditEvent(null)}>
           <div className="bg-white w-full max-w-md rounded-t-2xl sm:rounded-2xl p-6 animate-slide-up max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl font-bold text-gray-800">{editEvent.id ? 'Редактировать' : 'Добавить'} событие</h2>
@@ -315,7 +406,7 @@ export default function Admin() {
 
       {/* Edit User Role Modal */}
       {editUser && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center modal-overlay" onClick={() => setEditUser(null)}>
+        <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center modal-overlay" onClick={() => setEditUser(null)}>
           <div className="bg-white w-full max-w-md rounded-t-2xl sm:rounded-2xl p-6 animate-slide-up" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl font-bold text-gray-800">Изменить роль</h2>
@@ -337,8 +428,60 @@ export default function Admin() {
         </div>
       )}
 
+      {/* Edit Ritual Modal */}
+      {editRitual && (
+        <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center modal-overlay" onClick={() => setEditRitual(null)}>
+          <div className="bg-white w-full max-w-md rounded-t-2xl sm:rounded-2xl p-6 animate-slide-up max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-bold text-gray-800">{editRitual.id ? 'Редактировать обряд' : 'Новый обряд'}</h2>
+              <button onClick={() => setEditRitual(null)}><X className="w-6 h-6 text-gray-400" /></button>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Название (RU)</label>
+                <input type="text" value={editRitual.title || ''} onChange={e => setEditRitual({...editRitual, title: e.target.value})}
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Название (CRH)</label>
+                <input type="text" value={editRitual.title_crh || ''} onChange={e => setEditRitual({...editRitual, title_crh: e.target.value})}
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Подзаголовок (RU)</label>
+                <input type="text" value={editRitual.subtitle || ''} onChange={e => setEditRitual({...editRitual, subtitle: e.target.value})}
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Подзаголовок (CRH)</label>
+                <input type="text" value={editRitual.subtitle_crh || ''} onChange={e => setEditRitual({...editRitual, subtitle_crh: e.target.value})}
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Иконка (Emoji)</label>
+                  <input type="text" value={editRitual.icon || ''} onChange={e => setEditRitual({...editRitual, icon: e.target.value})}
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Порядок сортировки</label>
+                  <input type="number" value={editRitual.sort_order || 0} onChange={e => setEditRitual({...editRitual, sort_order: parseInt(e.target.value)})}
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                </div>
+              </div>
+              <div className="flex gap-3 pt-2">
+                <button onClick={() => setEditRitual(null)} className="flex-1 py-3 border border-gray-200 rounded-xl text-gray-600">Отмена</button>
+                <button onClick={saveRitual} className="flex-1 bg-emerald-500 text-white rounded-xl py-3 font-semibold hover:bg-emerald-600 flex items-center justify-center gap-2">
+                  <Save className="w-5 h-5" /> Сохранить
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {toast && (
-        <div className="fixed bottom-20 left-1/2 -translate-x-1/2 bg-gray-800 text-white px-4 py-2 rounded-full text-sm flex items-center gap-2 shadow-lg z-50">
+        <div className="fixed bottom-20 left-1/2 -translate-x-1/2 bg-gray-800 text-white px-4 py-2 rounded-full text-sm flex items-center gap-2 shadow-lg z-[100]">
           <Check className="w-4 h-4 text-emerald-400" />{toast}
         </div>
       )}

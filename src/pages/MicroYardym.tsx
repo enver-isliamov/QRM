@@ -9,9 +9,10 @@ type NewReq = { type: 'blood' | 'money' | 'other'; urgency: 'urgent' | 'normal';
 
 function MicroYardym() {
   const { user } = useAuth();
-  const { urgent, normal, loading, addRequest, respond } = useHelpRequests();
+  const { urgent, normal, loading, addRequest, respond, closeRequest } = useHelpRequests();
   const [showAddModal, setShowAddModal] = useState(false);
   const [showResponseModal, setShowResponseModal] = useState<string | null>(null);
+  const [showCloseModal, setShowCloseModal] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   // IDs обращений на которые текущий юзер уже откликнулся (из БД)
   const [alreadyResponded, setAlreadyResponded] = useState<Set<string>>(new Set());
@@ -51,8 +52,14 @@ function MicroYardym() {
     setShowResponseModal(null);
   };
 
+  const handleClose = async (requestId: string) => {
+    await closeRequest(requestId);
+    setShowCloseModal(null);
+  };
+
   const RequestCard = ({ request, isUrgent }: { request: HelpRequestRow; isUrgent?: boolean }) => {
     const hasResponded = alreadyResponded.has(request.id);
+    const isAuthor = user?.id === request.author_id;
     return (
       <div className={`rounded-xl p-4 border ${isUrgent ? 'bg-rose-50 border-rose-200' : 'bg-white border-gray-100 shadow-sm'}`}>
         <div className="flex items-start justify-between mb-2">
@@ -87,7 +94,13 @@ function MicroYardym() {
           <p className="text-xs text-gray-400 mb-2">Откликов: {request.responses_count ?? 0}</p>
         )}
 
-        {user ? (
+        {isAuthor ? (
+          <button
+            onClick={() => setShowCloseModal(request.id)}
+            className="w-full font-semibold py-3 rounded-lg transition-colors bg-gray-100 text-gray-600 hover:bg-gray-200">
+            Закрыть обращение
+          </button>
+        ) : user ? (
           <button
             onClick={() => !hasResponded && setShowResponseModal(request.id)}
             disabled={hasResponded}
@@ -153,7 +166,7 @@ function MicroYardym() {
 
       {/* Add Modal */}
       {showAddModal && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center modal-overlay" onClick={() => setShowAddModal(false)}>
+        <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center modal-overlay" onClick={() => setShowAddModal(false)}>
           <div className="bg-white w-full max-w-md rounded-t-2xl sm:rounded-2xl p-6 animate-slide-up max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl font-bold text-gray-800">Новое обращение</h2>
@@ -205,13 +218,27 @@ function MicroYardym() {
 
       {/* Respond Modal */}
       {showResponseModal && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center modal-overlay" onClick={() => setShowResponseModal(null)}>
+        <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center modal-overlay" onClick={() => setShowResponseModal(null)}>
           <div className="bg-white w-full max-w-md rounded-t-2xl sm:rounded-2xl p-6 animate-slide-up" onClick={e => e.stopPropagation()}>
             <h2 className="text-xl font-bold text-gray-800 mb-4">Вы готовы помочь?</h2>
             <p className="text-gray-600 mb-6">Нажимая «Подтвердить», вы сообщаете о своей готовности. Организатор увидит ваш отклик и может связаться с вами.</p>
             <div className="flex gap-3">
               <button onClick={() => setShowResponseModal(null)} className="flex-1 py-3 border border-gray-200 rounded-xl text-gray-600">Отмена</button>
               <button onClick={() => handleRespond(showResponseModal)} className="flex-1 bg-emerald-500 text-white py-3 rounded-xl font-medium hover:bg-emerald-600">Подтвердить</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Close Modal */}
+      {showCloseModal && (
+        <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center modal-overlay" onClick={() => setShowCloseModal(null)}>
+          <div className="bg-white w-full max-w-md rounded-t-2xl sm:rounded-2xl p-6 animate-slide-up" onClick={e => e.stopPropagation()}>
+            <h2 className="text-xl font-bold text-gray-800 mb-4">Закрыть обращение?</h2>
+            <p className="text-gray-600 mb-6">Вы уверены, что хотите закрыть это обращение? Оно будет отмечено как завершенное и больше не будет отображаться в активных.</p>
+            <div className="flex gap-3">
+              <button onClick={() => setShowCloseModal(null)} className="flex-1 py-3 border border-gray-200 rounded-xl text-gray-600">Отмена</button>
+              <button onClick={() => handleClose(showCloseModal)} className="flex-1 bg-emerald-500 text-white py-3 rounded-xl font-medium hover:bg-emerald-600">Закрыть</button>
             </div>
           </div>
         </div>

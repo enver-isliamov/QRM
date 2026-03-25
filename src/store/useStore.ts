@@ -40,6 +40,15 @@ interface AppState {
   addUser: (user: User) => void;
   updateUserRole: (userId: string, role: User['role']) => void;
   deleteUser: (userId: string) => void;
+  
+  // Feature Toggles
+  featureToggles: {
+    yardym: boolean;
+    meetings: boolean;
+    calendar: boolean;
+    rituals: boolean;
+  };
+  setFeatureToggle: (feature: 'yardym' | 'meetings' | 'calendar' | 'rituals', value: boolean) => void;
 }
 
 // Demo users for testing
@@ -183,6 +192,17 @@ export const useStore = create<AppState>()(
       })),
       deleteUser: (userId) => set((state) => ({
         users: state.users.filter(u => u.id !== userId)
+      })),
+      
+      // Feature Toggles
+      featureToggles: {
+        yardym: true,
+        meetings: true,
+        calendar: true,
+        rituals: true,
+      },
+      setFeatureToggle: (feature, value) => set((state) => ({
+        featureToggles: { ...state.featureToggles, [feature]: value }
       }))
     }),
     {
@@ -192,7 +212,8 @@ export const useStore = create<AppState>()(
         isAuthenticated: state.isAuthenticated,
         language: state.language,
         completedPrayers: state.completedPrayers,
-        meetings: state.meetings
+        meetings: state.meetings,
+        featureToggles: state.featureToggles
       })
     }
   )

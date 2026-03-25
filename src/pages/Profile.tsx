@@ -7,6 +7,9 @@ function Profile() {
   const navigate = useNavigate();
   const { user, profile, signOut } = useAuth();
   const [showLogout, setShowLogout] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const [showNotifSettings, setShowNotifSettings] = useState(false);
+  const [showSecurity, setShowSecurity] = useState(false);
   const [language, setLanguageState] = useState<'ru' | 'crh'>('ru');
 
   if (!user || !profile) {
@@ -28,9 +31,9 @@ function Profile() {
   }
 
   const menuItems = [
-    { icon: Settings, label: 'Настройки', labelCrh: 'Сазламалар', action: () => {} },
-    { icon: Bell, label: 'Уведомления', labelCrh: 'Бильдиришлер', action: () => {} },
-    { icon: Shield, label: 'Безопасность', labelCrh: 'Эминлик', action: () => {} },
+    { icon: Settings, label: 'Настройки', labelCrh: 'Сазламалар', action: () => setShowSettings(true) },
+    { icon: Bell, label: 'Уведомления', labelCrh: 'Бильдиришлер', action: () => setShowNotifSettings(true) },
+    { icon: Shield, label: 'Безопасность', labelCrh: 'Эминлик', action: () => setShowSecurity(true) },
     { icon: Heart, label: 'Поддержка', labelCrh: 'Ярдым', action: () => navigate('/support') },
   ];
 
@@ -141,7 +144,7 @@ function Profile() {
       </div>
 
       {showLogout && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center modal-overlay" onClick={() => setShowLogout(false)}>
+        <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center modal-overlay" onClick={() => setShowLogout(false)}>
           <div className="bg-white w-full max-w-md rounded-t-2xl sm:rounded-2xl p-6 animate-slide-up" onClick={e => e.stopPropagation()}>
             <h2 className="text-xl font-bold text-gray-800 text-center mb-2">Выйти из аккаунта?</h2>
             <p className="text-gray-600 text-center mb-6">Для входа потребуется повторная авторизация.</p>
@@ -149,6 +152,70 @@ function Profile() {
               <button onClick={() => setShowLogout(false)} className="flex-1 py-3 border border-gray-200 rounded-xl text-gray-600 font-medium">Отмена</button>
               <button onClick={handleLogout} className="flex-1 bg-rose-500 text-white py-3 rounded-xl font-medium hover:bg-rose-600">Выйти</button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Settings Modal */}
+      {showSettings && (
+        <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center modal-overlay" onClick={() => setShowSettings(false)}>
+          <div className="bg-white w-full max-w-md rounded-t-2xl sm:rounded-2xl p-6 animate-slide-up" onClick={e => e.stopPropagation()}>
+            <h2 className="text-xl font-bold text-gray-800 mb-4">Настройки</h2>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <span className="text-gray-700">Темная тема</span>
+                <button className="w-11 h-6 bg-gray-200 rounded-full relative opacity-50 cursor-not-allowed">
+                  <span className="absolute left-1 top-1 w-4 h-4 bg-white rounded-full" />
+                </button>
+              </div>
+              <p className="text-xs text-gray-400">В разработке</p>
+            </div>
+            <button onClick={() => setShowSettings(false)} className="w-full mt-6 py-3 bg-gray-100 text-gray-700 rounded-xl font-medium">Закрыть</button>
+          </div>
+        </div>
+      )}
+
+      {/* Notifications Settings Modal */}
+      {showNotifSettings && (
+        <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center modal-overlay" onClick={() => setShowNotifSettings(false)}>
+          <div className="bg-white w-full max-w-md rounded-t-2xl sm:rounded-2xl p-6 animate-slide-up" onClick={e => e.stopPropagation()}>
+            <h2 className="text-xl font-bold text-gray-800 mb-4">Настройки уведомлений</h2>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <span className="text-gray-700">Push-уведомления</span>
+                <button className="w-11 h-6 bg-emerald-500 rounded-full relative">
+                  <span className="absolute right-1 top-1 w-4 h-4 bg-white rounded-full" />
+                </button>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-gray-700">Email-рассылка</span>
+                <button className="w-11 h-6 bg-gray-200 rounded-full relative">
+                  <span className="absolute left-1 top-1 w-4 h-4 bg-white rounded-full" />
+                </button>
+              </div>
+            </div>
+            <button onClick={() => setShowNotifSettings(false)} className="w-full mt-6 py-3 bg-gray-100 text-gray-700 rounded-xl font-medium">Закрыть</button>
+          </div>
+        </div>
+      )}
+
+      {/* Security Modal */}
+      {showSecurity && (
+        <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center modal-overlay" onClick={() => setShowSecurity(false)}>
+          <div className="bg-white w-full max-w-md rounded-t-2xl sm:rounded-2xl p-6 animate-slide-up" onClick={e => e.stopPropagation()}>
+            <h2 className="text-xl font-bold text-gray-800 mb-4">Безопасность</h2>
+            <div className="space-y-4">
+              <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
+                <p className="text-sm text-gray-500 mb-1">Текущая сессия</p>
+                <p className="font-medium text-gray-800">{navigator.userAgent.split(' ')[0]} • {Intl.DateTimeFormat().resolvedOptions().timeZone}</p>
+              </div>
+              {profile.provider === 'email' && (
+                <button className="w-full py-3 border border-gray-200 text-gray-700 rounded-xl font-medium hover:bg-gray-50">
+                  Изменить пароль
+                </button>
+              )}
+            </div>
+            <button onClick={() => setShowSecurity(false)} className="w-full mt-6 py-3 bg-gray-100 text-gray-700 rounded-xl font-medium">Закрыть</button>
           </div>
         </div>
       )}

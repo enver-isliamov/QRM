@@ -1,31 +1,37 @@
 import { useNavigate } from 'react-router-dom'
 import { Calendar, BookOpen, User, Heart, Shield, Bell } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
+import { useStore } from '../store/useStore'
 
 export default function Sections() {
   const navigate = useNavigate()
   const { isAuthenticated, profile } = useAuth()
+  const { featureToggles } = useStore()
 
   const sections = [
     {
       icon: Calendar, bg: 'bg-emerald-100', color: 'text-emerald-600',
       title: 'Этно-календарь', sub: 'Праздники и памятные даты',
       path: '/ethno-calendar',
+      show: featureToggles.calendar
     },
     {
       icon: BookOpen, bg: 'bg-amber-100', color: 'text-amber-600',
       title: 'Обрядовый гид', sub: 'Никях, Дженазе, Суннат',
       path: '/rituals',
+      show: featureToggles.rituals
     },
     {
       icon: Bell, bg: 'bg-blue-100', color: 'text-blue-600',
       title: 'Уведомления', sub: 'Встречи, отклики, обновления',
       path: '/notifications',
+      show: true
     },
     {
       icon: Heart, bg: 'bg-rose-100', color: 'text-rose-600',
       title: 'Поддержка проекта', sub: 'Помочь развитию ORAZA',
       path: '/support',
+      show: true
     },
   ]
 
@@ -68,7 +74,7 @@ export default function Sections() {
 
         {/* Sections grid */}
         <div className="grid grid-cols-2 gap-3 mb-4">
-          {sections.map(({ icon: Icon, bg, color, title, sub, path }) => (
+          {sections.filter(s => s.show).map(({ icon: Icon, bg, color, title, sub, path }) => (
             <button key={path} onClick={() => navigate(path)}
               className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 text-left touch-feedback hover:border-emerald-200 transition-colors active:scale-95">
               <div className={`w-10 h-10 ${bg} rounded-xl flex items-center justify-center mb-3`}>
