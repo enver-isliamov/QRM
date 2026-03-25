@@ -146,7 +146,7 @@ export default function Admin() {
 
   const updateUserRole = async (uid: string, role: string) => {
     if (isModerator) return
-    const { error } = await supabase.from('profiles').update({ role }).eq('id', uid)
+    const { error } = await supabase.rpc('set_user_role', { target_user_id: uid, new_role: role })
     if (error) {
       console.error('Error updating role:', error)
       showToast('Ошибка при изменении роли')
