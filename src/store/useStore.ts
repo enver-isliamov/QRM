@@ -47,8 +47,9 @@ interface AppState {
     meetings: boolean;
     calendar: boolean;
     rituals: boolean;
+    preModeration: boolean;
   };
-  setFeatureToggle: (feature: 'yardym' | 'meetings' | 'calendar' | 'rituals', value: boolean) => void;
+  setFeatureToggle: (feature: 'yardym' | 'meetings' | 'calendar' | 'rituals' | 'preModeration', value: boolean) => void;
 }
 
 // Demo users for testing
@@ -200,6 +201,7 @@ export const useStore = create<AppState>()(
         meetings: true,
         calendar: true,
         rituals: true,
+        preModeration: false,
       },
       setFeatureToggle: (feature, value) => set((state) => ({
         featureToggles: { ...state.featureToggles, [feature]: value }

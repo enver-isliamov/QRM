@@ -1,26 +1,33 @@
 import { useState, useEffect } from 'react';
-import { Heart, Phone, MapPin, AlertCircle, Plus, X, Droplets, Banknote, HelpCircle, MessageCircle, Send } from 'lucide-react';
+import { Heart, Phone, MapPin, AlertCircle, Plus, X, Droplets, Banknote, HelpCircle, MessageCircle, Send, Check, Flag } from 'lucide-react';
 import { format } from 'date-fns';
 import { useHelpRequests } from '../hooks/useHelpRequests';
 import { useAuth } from '../hooks/useAuth';
 import { HelpRequestRow, HelpRequestCommentRow, supabase } from '../lib/supabase';
+import { useStore } from '../store/useStore';
 
 type NewReq = { type: 'blood' | 'money' | 'other'; urgency: 'urgent' | 'normal'; title: string; location: string; description: string; contact_phone: string };
 
 function MicroYardym() {
   const { user } = useAuth();
+  const { featureToggles } = useStore();
   const { urgent, normal, loading, addRequest, respond, closeRequest } = useHelpRequests();
   const [showAddModal, setShowAddModal] = useState(false);
   const [showResponseModal, setShowResponseModal] = useState<string | null>(null);
   const [showCloseModal, setShowCloseModal] = useState<string | null>(null);
   const [showCommentsModal, setShowCommentsModal] = useState<HelpRequestRow | null>(null);
+  const [showReportModal, setShowReportModal] = useState<{ type: 'help_request' | 'comment', id: string } | null>(null);
+  const [reportReason, setReportReason] = useState('');
   const [comments, setComments] = useState<HelpRequestCommentRow[]>([]);
   const [newComment, setNewComment] = useState('');
   const [loadingComments, setLoadingComments] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
   // IDs обращений на которые текущий юзер уже откликнулся (из БД)
   const [alreadyResponded, setAlreadyResponded] = useState<Set<string>>(new Set());
   const [newReq, setNewReq] = useState<NewReq>({ type: 'other', urgency: 'normal', title: '', location: '', description: '', contact_phone: '' });
+
+  const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(null), 3000); };
 
   // Загружаем с БД: на что уже откликнулся пользователь
   useEffect(() => {
@@ -87,10 +94,16 @@ function MicroYardym() {
   const handleAdd = async () => {
     if (!newReq.title || !newReq.location || !newReq.description) return;
     setSubmitting(true);
-    await addRequest({ ...newReq, status: 'active' }, user?.id);
+    const initialStatus = featureToggles.preModeration ? 'pending' : 'active';
+    await addRequest({ ...newReq, status: initialStatus }, user?.id);
     setSubmitting(false);
     setShowAddModal(false);
     setNewReq({ type: 'other', urgency: 'normal', title: '', location: '', description: '', contact_phone: '' });
+    if (featureToggles.preModeration) {
+      showToast('Обращение отправлено на модерацию');
+    } else {
+      showToast('Обращение опубликовано');
+    }
   };
 
   const handleRespond = async (requestId: string) => {
@@ -104,6 +117,26 @@ function MicroYardym() {
   const handleClose = async (requestId: string) => {
     await closeRequest(requestId);
     setShowCloseModal(null);
+  };
+
+  const handleReport = async () => {
+    if (!showReportModal || !user || !reportReason.trim()) return;
+    setSubmitting(true);
+    const { error } = await supabase.from('reports').insert({
+      reporter_id: user.id,
+      target_type: showReportModal.type,
+      target_id: showReportModal.id,
+      reason: reportReason.trim(),
+      status: 'pending'
+    });
+    setSubmitting(false);
+    if (!error) {
+      showToast('Жалоба отправлена');
+      setShowReportModal(null);
+      setReportReason('');
+    } else {
+      showToast('Ошибка при отправке жалобы');
+    }
   };
 
   const RequestCard = ({ request, isUrgent }: { request: HelpRequestRow; isUrgent?: boolean }) => {
@@ -142,12 +175,19 @@ function MicroYardym() {
         {!isUrgent && (
           <div className="flex items-center justify-between mb-2">
             <p className="text-xs text-gray-400">Откликов: {request.responses_count ?? 0}</p>
-            <button 
-              onClick={() => setShowCommentsModal(request)}
-              className="flex items-center gap-1 text-xs text-emerald-600 hover:text-emerald-700 bg-emerald-50 px-2 py-1 rounded-lg transition-colors">
-              <MessageCircle className="w-3.5 h-3.5" />
-              Обсуждение
-            </button>
+            <div className="flex items-center gap-2">
+              <button 
+                onClick={() => setShowReportModal({ type: 'help_request', id: request.id })}
+                className="flex items-center gap-1 text-xs text-gray-400 hover:text-rose-500 transition-colors">
+                <Flag className="w-3 h-3" />
+              </button>
+              <button 
+                onClick={() => setShowCommentsModal(request)}
+                className="flex items-center gap-1 text-xs text-emerald-600 hover:text-emerald-700 bg-emerald-50 px-2 py-1 rounded-lg transition-colors">
+                <MessageCircle className="w-3.5 h-3.5" />
+                Обсуждение
+              </button>
+            </div>
           </div>
         )}
 
@@ -177,11 +217,18 @@ function MicroYardym() {
             </button>
           )}
           {isUrgent && (
-            <button 
-              onClick={() => setShowCommentsModal(request)}
-              className="flex items-center justify-center w-12 bg-emerald-50 text-emerald-600 rounded-lg hover:bg-emerald-100 transition-colors">
-              <MessageCircle className="w-5 h-5" />
-            </button>
+            <div className="flex gap-2">
+              <button 
+                onClick={() => setShowReportModal({ type: 'help_request', id: request.id })}
+                className="flex items-center justify-center w-12 bg-gray-50 text-gray-400 rounded-lg hover:bg-rose-50 hover:text-rose-500 transition-colors">
+                <Flag className="w-4 h-4" />
+              </button>
+              <button 
+                onClick={() => setShowCommentsModal(request)}
+                className="flex items-center justify-center w-12 bg-emerald-50 text-emerald-600 rounded-lg hover:bg-emerald-100 transition-colors">
+                <MessageCircle className="w-5 h-5" />
+              </button>
+            </div>
           )}
         </div>
       </div>
@@ -347,13 +394,20 @@ function MicroYardym() {
                         </span>
                       )}
                     </div>
-                    <div className={`max-w-[80%] rounded-2xl px-4 py-2 ${
+                    <div className={`max-w-[80%] rounded-2xl px-4 py-2 relative group ${
                       comment.author_id === user?.id 
                         ? 'bg-emerald-500 text-white rounded-tr-sm' 
                         : 'bg-white border border-gray-100 text-gray-800 rounded-tl-sm shadow-sm'
                     }`}>
                       {comment.author_id !== user?.id && (
-                        <p className="text-xs font-medium text-emerald-600 mb-1">{comment.author?.name || 'Пользователь'}</p>
+                        <div className="flex items-center justify-between mb-1">
+                          <p className="text-xs font-medium text-emerald-600">{comment.author?.name || 'Пользователь'}</p>
+                          <button 
+                            onClick={() => setShowReportModal({ type: 'comment', id: comment.id })}
+                            className="text-gray-300 hover:text-rose-500 transition-colors opacity-0 group-hover:opacity-100">
+                            <Flag className="w-3 h-3" />
+                          </button>
+                        </div>
                       )}
                       <p className="text-sm whitespace-pre-wrap break-words">{comment.content}</p>
                       <p className={`text-[10px] mt-1 text-right ${comment.author_id === user?.id ? 'text-emerald-100' : 'text-gray-400'}`}>
@@ -394,6 +448,42 @@ function MicroYardym() {
                 </div>
               )}
             </div>
+          </div>
+        </div>
+      )}
+      {/* Report Modal */}
+      {showReportModal && (
+        <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center modal-overlay" onClick={() => setShowReportModal(null)}>
+          <div className="bg-white w-full max-w-md rounded-t-2xl sm:rounded-2xl p-6 animate-slide-up" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-bold text-gray-800">Пожаловаться</h2>
+              <button onClick={() => setShowReportModal(null)} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
+                <X className="w-5 h-5 text-gray-500" />
+              </button>
+            </div>
+            <p className="text-sm text-gray-600 mb-4">Опишите причину жалобы. Модераторы проверят информацию.</p>
+            <textarea
+              value={reportReason}
+              onChange={e => setReportReason(e.target.value)}
+              placeholder="Причина жалобы..."
+              className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-rose-500 focus:border-transparent mb-4 resize-none h-32"
+            />
+            <button
+              onClick={handleReport}
+              disabled={submitting || !reportReason.trim()}
+              className="w-full bg-rose-500 text-white font-semibold py-3 rounded-xl hover:bg-rose-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+              {submitting ? 'Отправка...' : 'Отправить жалобу'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Toast Notification */}
+      {toast && (
+        <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-[200] animate-slide-up">
+          <div className="bg-gray-900 text-white px-4 py-3 rounded-xl shadow-lg flex items-center gap-3 text-sm font-medium">
+            <Check className="w-5 h-5 text-emerald-400" />
+            {toast}
           </div>
         </div>
       )}

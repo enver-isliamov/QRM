@@ -5,25 +5,29 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import { useStore } from '../store/useStore'
 
-type Tab = 'stats' | 'users' | 'events' | 'help' | 'meetings' | 'rituals' | 'settings'
+type Tab = 'stats' | 'users' | 'events' | 'help' | 'meetings' | 'rituals' | 'settings' | 'moderation'
 type UserRow = { id: string; name: string; avatar_url?: string; role: string; provider: string; created_at: string }
 type EventRow = { id: string; event_date: string; title: string; title_crh?: string; description?: string; description_crh?: string; type: string }
 type HelpRow  = { id: string; title: string; type: string; urgency: string; status: string; location: string; created_at: string; responses_count?: number }
 type MeetRow  = { id: string; village: string; organizer: string; meeting_date: string; status: string; attendees_count?: number }
 type RitualRow = { id: string; title: string; title_crh?: string; subtitle?: string; subtitle_crh?: string; icon?: string; sort_order?: number }
+type ReportRow = { id: string; reporter_id: string; target_type: string; target_id: string; reason: string; description?: string; status: string; created_at: string }
+type AuditLogRow = { id: string; admin_id: string; action: string; target_type: string; target_id: string; created_at: string; admin?: { name: string; email: string } }
 
 export default function Admin() {
   const navigate = useNavigate()
   const { profile } = useAuth()
   const { featureToggles, setFeatureToggle } = useStore()
   const isModerator = profile?.role === 'moderator'
-  const [tab, setTab] = useState<Tab>(isModerator ? 'events' : 'stats')
+  const [tab, setTab] = useState<Tab>(isModerator ? 'moderation' : 'stats')
   const [stats, setStats] = useState<Record<string, number>>({})
   const [users, setUsers] = useState<UserRow[]>([])
   const [events, setEvents] = useState<EventRow[]>([])
   const [helpReqs, setHelpReqs] = useState<HelpRow[]>([])
   const [meetingList, setMeetingList] = useState<MeetRow[]>([])
   const [rituals, setRituals] = useState<RitualRow[]>([])
+  const [reports, setReports] = useState<ReportRow[]>([])
+  const [auditLogs, setAuditLogs] = useState<AuditLogRow[]>([])
   const [loading, setLoading] = useState(false)
   const [editEvent, setEditEvent] = useState<Partial<EventRow> | null>(null)
   const [editUser, setEditUser] = useState<UserRow | null>(null)
@@ -52,6 +56,14 @@ export default function Admin() {
       const { data } = await supabase.from('help_requests_with_count').select('*').order('created_at', { ascending: false })
       if (data) setHelpReqs(data as HelpRow[])
     }
+    if (t === 'moderation') {
+      const { data } = await supabase.from('help_requests_with_count').select('*').eq('status', 'pending').order('created_at', { ascending: false })
+      if (data) setHelpReqs(data as HelpRow[])
+      const { data: reportsData } = await supabase.from('reports').select('*').order('created_at', { ascending: false })
+      if (reportsData) setReports(reportsData as ReportRow[])
+      const { data: auditData } = await supabase.from('audit_logs').select('*, admin:profiles!audit_logs_admin_id_fkey(name, email)').order('created_at', { ascending: false }).limit(50)
+      if (auditData) setAuditLogs(auditData as AuditLogRow[])
+    }
     if (t === 'meetings') {
       const { data } = await supabase.from('meetings_with_stats').select('*').order('meeting_date', { ascending: false })
       if (data) setMeetingList(data as MeetRow[])
@@ -63,29 +75,51 @@ export default function Admin() {
     setLoading(false)
   }
 
+  const logAudit = async (action: string, target_type: string, target_id: string) => {
+    if (!profile) return
+    await supabase.from('audit_logs').insert({
+      admin_id: profile.id,
+      action,
+      target_type,
+      target_id
+    })
+  }
+
   const saveEvent = async () => {
     if (!editEvent) return
-    if (editEvent.id) await supabase.from('ethno_events').update(editEvent).eq('id', editEvent.id)
-    else await supabase.from('ethno_events').insert(editEvent)
+    if (editEvent.id) {
+      await supabase.from('ethno_events').update(editEvent).eq('id', editEvent.id)
+      await logAudit('update', 'ethno_events', editEvent.id)
+    } else {
+      const { data } = await supabase.from('ethno_events').insert(editEvent).select().single()
+      if (data) await logAudit('create', 'ethno_events', data.id)
+    }
     setEditEvent(null); loadTab('events'); showToast('Сохранено ✓')
   }
 
   const deleteEvent = async (id: string) => {
     if (!confirm('Удалить событие?')) return
     await supabase.from('ethno_events').delete().eq('id', id)
+    await logAudit('delete', 'ethno_events', id)
     loadTab('events'); showToast('Удалено')
   }
 
   const saveRitual = async () => {
     if (!editRitual) return
-    if (editRitual.id) await supabase.from('rituals').update(editRitual).eq('id', editRitual.id)
-    else await supabase.from('rituals').insert(editRitual)
+    if (editRitual.id) {
+      await supabase.from('rituals').update(editRitual).eq('id', editRitual.id)
+      await logAudit('update', 'rituals', editRitual.id)
+    } else {
+      const { data } = await supabase.from('rituals').insert(editRitual).select().single()
+      if (data) await logAudit('create', 'rituals', data.id)
+    }
     setEditRitual(null); loadTab('rituals'); showToast('Обряд сохранен ✓')
   }
 
   const deleteRitual = async (id: string) => {
     if (!confirm('Удалить обряд?')) return
     await supabase.from('rituals').delete().eq('id', id)
+    await logAudit('delete', 'rituals', id)
     loadTab('rituals'); showToast('Удалено')
   }
 
@@ -97,18 +131,21 @@ export default function Admin() {
       showToast('Ошибка при изменении роли')
       return
     }
+    await logAudit('update_role', 'profiles', uid)
     setUsers(prev => prev.map(u => u.id === uid ? { ...u, role } : u))
     setEditUser(null); showToast('Роль изменена ✓')
   }
 
   const closeHelpRequest = async (id: string) => {
     await supabase.from('help_requests').update({ status: 'completed' }).eq('id', id)
+    await logAudit('close', 'help_requests', id)
     loadTab('help'); showToast('Обращение закрыто')
   }
 
   const allTabs = [
     { id: 'stats'    as Tab, label: 'Статистика',   icon: BarChart3, show: !isModerator },
     { id: 'users'    as Tab, label: 'Пользователи', icon: Users,     show: !isModerator },
+    { id: 'moderation' as Tab, label: 'Модерация', icon: Shield,    show: true },
     { id: 'events'   as Tab, label: 'Календарь',    icon: Settings,  show: true },
     { id: 'help'     as Tab, label: 'Ярдым',         icon: Shield,    show: true },
     { id: 'meetings' as Tab, label: 'Встречи',       icon: Settings,  show: true },
@@ -212,6 +249,120 @@ export default function Admin() {
                 </div>
               </div>
             ))}
+          </div>
+        )}
+
+        {/* MODERATION */}
+        {!loading && tab === 'moderation' && (
+          <div className="space-y-6">
+            <div>
+              <h2 className="text-lg font-bold text-gray-800 mb-3">Ожидают модерации (Ярдым)</h2>
+              {helpReqs.length === 0 ? (
+                <p className="text-sm text-gray-500 bg-white p-4 rounded-xl border border-gray-100">Нет обращений на модерации.</p>
+              ) : (
+                <div className="space-y-3">
+                  {helpReqs.map(r => (
+                    <div key={r.id} className="bg-white rounded-xl p-4 shadow-sm border border-amber-200">
+                      <div className="flex items-start justify-between mb-2">
+                        <p className="font-semibold text-gray-800 flex-1 min-w-0">{r.title}</p>
+                        <span className="text-xs px-2 py-0.5 rounded-full ml-2 flex-shrink-0 bg-amber-100 text-amber-700">На модерации</span>
+                      </div>
+                      <p className="text-sm text-gray-500 mb-3">{r.location}</p>
+                      <div className="flex items-center gap-2">
+                        <button onClick={async () => {
+                          await supabase.from('help_requests').update({ status: 'active' }).eq('id', r.id)
+                          await logAudit('approve', 'help_requests', r.id)
+                          loadTab('moderation'); showToast('Одобрено')
+                        }} className="flex-1 bg-emerald-500 text-white py-2 rounded-xl text-sm font-medium hover:bg-emerald-600">
+                          Одобрить
+                        </button>
+                        <button onClick={async () => {
+                          await supabase.from('help_requests').update({ status: 'rejected' }).eq('id', r.id)
+                          await logAudit('reject', 'help_requests', r.id)
+                          loadTab('moderation'); showToast('Отклонено')
+                        }} className="flex-1 bg-rose-100 text-rose-700 py-2 rounded-xl text-sm font-medium hover:bg-rose-200">
+                          Отклонить
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div>
+              <h2 className="text-lg font-bold text-gray-800 mb-3">Жалобы пользователей</h2>
+              {reports.length === 0 ? (
+                <p className="text-sm text-gray-500 bg-white p-4 rounded-xl border border-gray-100">Нет активных жалоб.</p>
+              ) : (
+                <div className="space-y-3">
+                  {reports.map(r => (
+                    <div key={r.id} className="bg-white rounded-xl p-4 shadow-sm border border-rose-200">
+                      <div className="flex items-start justify-between mb-2">
+                        <div>
+                          <span className="text-xs font-bold text-rose-600 uppercase tracking-wider">{r.target_type === 'help_request' ? 'Обращение' : 'Комментарий'}</span>
+                          <p className="font-medium text-gray-800 mt-1">Причина: {r.reason}</p>
+                        </div>
+                        <span className={`text-xs px-2 py-0.5 rounded-full ml-2 flex-shrink-0 ${r.status === 'pending' ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-500'}`}>
+                          {r.status === 'pending' ? 'Новая' : 'Рассмотрена'}
+                        </span>
+                      </div>
+                      <p className="text-xs text-gray-400 mb-3">ID: {r.target_id}</p>
+                      {r.status === 'pending' && (
+                        <div className="flex items-center gap-2">
+                          <button onClick={async () => {
+                            await supabase.from('reports').update({ status: 'reviewed' }).eq('id', r.id)
+                            await logAudit('review', 'reports', r.id)
+                            loadTab('moderation'); showToast('Отмечено как рассмотренное')
+                          }} className="flex-1 bg-emerald-50 text-emerald-600 py-2 rounded-xl text-sm font-medium hover:bg-emerald-100">
+                            Рассмотрено
+                          </button>
+                          <button onClick={async () => {
+                            await supabase.from('reports').update({ status: 'dismissed' }).eq('id', r.id)
+                            await logAudit('dismiss', 'reports', r.id)
+                            loadTab('moderation'); showToast('Жалоба отклонена')
+                          }} className="flex-1 bg-gray-100 text-gray-600 py-2 rounded-xl text-sm font-medium hover:bg-gray-200">
+                            Отклонить
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div>
+              <h2 className="text-lg font-bold text-gray-800 mb-3">Журнал действий (Audit Log)</h2>
+              {auditLogs.length === 0 ? (
+                <p className="text-sm text-gray-500 bg-white p-4 rounded-xl border border-gray-100">Журнал пуст.</p>
+              ) : (
+                <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm text-left">
+                      <thead className="bg-gray-50 text-gray-500 font-medium">
+                        <tr>
+                          <th className="px-4 py-3">Дата</th>
+                          <th className="px-4 py-3">Модератор</th>
+                          <th className="px-4 py-3">Действие</th>
+                          <th className="px-4 py-3">Объект</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {auditLogs.map(log => (
+                          <tr key={log.id} className="hover:bg-gray-50">
+                            <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{new Date(log.created_at).toLocaleString('ru-RU')}</td>
+                            <td className="px-4 py-3 font-medium text-gray-800">{log.admin?.name || 'Неизвестно'}</td>
+                            <td className="px-4 py-3 text-gray-600">{log.action}</td>
+                            <td className="px-4 py-3 text-gray-400 font-mono text-xs">{log.target_type} ({log.target_id.slice(0, 8)}...)</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         )}
 
@@ -346,7 +497,8 @@ export default function Admin() {
                   { id: 'meetings', label: 'Встречи сёл' },
                   { id: 'yardym', label: 'Микро-Ярдым' },
                   { id: 'calendar', label: 'Этно-календарь' },
-                  { id: 'rituals', label: 'Обряды' }
+                  { id: 'rituals', label: 'Обряды' },
+                  { id: 'preModeration', label: 'Премодерация Ярдым' }
                 ] as const).map(({ id, label }) => (
                   <div key={id} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
                     <span className="text-gray-700 font-medium">{label}</span>

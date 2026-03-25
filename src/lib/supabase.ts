@@ -53,9 +53,23 @@ export type HelpRequestRow = {
   urgency: 'urgent' | 'normal'; title: string
   location: string; description: string
   contact_phone?: string
-  status: 'active' | 'completed' | 'cancelled'
+  status: 'active' | 'completed' | 'cancelled' | 'pending' | 'rejected'
   created_at: string; updated_at: string
   responses_count?: number
+}
+
+export type ReportRow = {
+  id: string; reporter_id: string; target_type: 'help_request' | 'comment' | 'profile'
+  target_id: string; reason: string; description?: string
+  status: 'pending' | 'reviewed' | 'dismissed'
+  created_at: string
+}
+
+export type AuditLogRow = {
+  id: string; admin_id: string; action: string
+  target_type: string; target_id: string; details?: any
+  created_at: string
+  admin?: { name: string; email: string }
 }
 
 export type MeetingRow = {
