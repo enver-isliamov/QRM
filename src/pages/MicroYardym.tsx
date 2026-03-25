@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
-import { Heart, Phone, MapPin, AlertCircle, Plus, X, Droplets, Banknote, HelpCircle } from 'lucide-react';
+import { Heart, Phone, MapPin, AlertCircle, Plus, X, Droplets, Banknote, HelpCircle, MessageCircle, Send } from 'lucide-react';
 import { format } from 'date-fns';
 import { useHelpRequests } from '../hooks/useHelpRequests';
 import { useAuth } from '../hooks/useAuth';
-import { HelpRequestRow, supabase } from '../lib/supabase';
+import { HelpRequestRow, HelpRequestCommentRow, supabase } from '../lib/supabase';
 
 type NewReq = { type: 'blood' | 'money' | 'other'; urgency: 'urgent' | 'normal'; title: string; location: string; description: string; contact_phone: string };
 
@@ -13,6 +13,10 @@ function MicroYardym() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showResponseModal, setShowResponseModal] = useState<string | null>(null);
   const [showCloseModal, setShowCloseModal] = useState<string | null>(null);
+  const [showCommentsModal, setShowCommentsModal] = useState<HelpRequestRow | null>(null);
+  const [comments, setComments] = useState<HelpRequestCommentRow[]>([]);
+  const [newComment, setNewComment] = useState('');
+  const [loadingComments, setLoadingComments] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   // IDs обращений на которые текущий юзер уже откликнулся (из БД)
   const [alreadyResponded, setAlreadyResponded] = useState<Set<string>>(new Set());
@@ -26,6 +30,51 @@ function MicroYardym() {
         if (data) setAlreadyResponded(new Set(data.map(r => r.request_id)));
       });
   }, [user]);
+
+  useEffect(() => {
+    if (!showCommentsModal) {
+      setComments([]);
+      return;
+    }
+    const fetchComments = async () => {
+      setLoadingComments(true);
+      const { data, error } = await supabase
+        .from('help_request_comments')
+        .select(`
+          id, request_id, author_id, content, created_at,
+          author:profiles!help_request_comments_author_id_fkey(name, avatar_url, role)
+        `)
+        .eq('request_id', showCommentsModal.id)
+        .order('created_at', { ascending: true });
+      
+      if (data && !error) {
+        setComments(data as any);
+      }
+      setLoadingComments(false);
+    };
+    fetchComments();
+  }, [showCommentsModal]);
+
+  const handleAddComment = async () => {
+    if (!newComment.trim() || !user || !showCommentsModal) return;
+    const { data, error } = await supabase
+      .from('help_request_comments')
+      .insert({
+        request_id: showCommentsModal.id,
+        author_id: user.id,
+        content: newComment.trim()
+      })
+      .select(`
+        id, request_id, author_id, content, created_at,
+        author:profiles!help_request_comments_author_id_fkey(name, avatar_url, role)
+      `)
+      .single();
+    
+    if (data && !error) {
+      setComments(prev => [...prev, data as any]);
+      setNewComment('');
+    }
+  };
 
   const getTypeIcon = (type: string) => {
     switch (type) {
@@ -91,33 +140,50 @@ function MicroYardym() {
         )}
 
         {!isUrgent && (
-          <p className="text-xs text-gray-400 mb-2">Откликов: {request.responses_count ?? 0}</p>
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-xs text-gray-400">Откликов: {request.responses_count ?? 0}</p>
+            <button 
+              onClick={() => setShowCommentsModal(request)}
+              className="flex items-center gap-1 text-xs text-emerald-600 hover:text-emerald-700 bg-emerald-50 px-2 py-1 rounded-lg transition-colors">
+              <MessageCircle className="w-3.5 h-3.5" />
+              Обсуждение
+            </button>
+          </div>
         )}
 
-        {isAuthor ? (
-          <button
-            onClick={() => setShowCloseModal(request.id)}
-            className="w-full font-semibold py-3 rounded-lg transition-colors bg-gray-100 text-gray-600 hover:bg-gray-200">
-            Закрыть обращение
-          </button>
-        ) : user ? (
-          <button
-            onClick={() => !hasResponded && setShowResponseModal(request.id)}
-            disabled={hasResponded}
-            className={`w-full font-semibold py-3 rounded-lg transition-colors ${
-              hasResponded
-                ? 'bg-gray-100 text-gray-400 cursor-default'
-                : isUrgent
-                ? 'bg-rose-500 text-white hover:bg-rose-600'
-                : 'bg-emerald-500 text-white hover:bg-emerald-600'
-            }`}>
-            {hasResponded ? '✓ Вы откликнулись' : isUrgent ? 'Я МОГУ ПОМОЧЬ' : 'Откликнуться'}
-          </button>
-        ) : (
-          <button onClick={() => {}} disabled className="w-full bg-gray-100 text-gray-400 font-semibold py-3 rounded-lg text-sm">
-            Войдите, чтобы откликнуться
-          </button>
-        )}
+        <div className="flex gap-2">
+          {isAuthor ? (
+            <button
+              onClick={() => setShowCloseModal(request.id)}
+              className="w-full font-semibold py-3 rounded-lg transition-colors bg-gray-100 text-gray-600 hover:bg-gray-200">
+              Закрыть обращение
+            </button>
+          ) : user ? (
+            <button
+              onClick={() => !hasResponded && setShowResponseModal(request.id)}
+              disabled={hasResponded}
+              className={`w-full font-semibold py-3 rounded-lg transition-colors ${
+                hasResponded
+                  ? 'bg-gray-100 text-gray-400 cursor-default'
+                  : isUrgent
+                  ? 'bg-rose-500 text-white hover:bg-rose-600'
+                  : 'bg-emerald-500 text-white hover:bg-emerald-600'
+              }`}>
+              {hasResponded ? '✓ Вы откликнулись' : isUrgent ? 'Я МОГУ ПОМОЧЬ' : 'Откликнуться'}
+            </button>
+          ) : (
+            <button onClick={() => {}} disabled className="w-full bg-gray-100 text-gray-400 font-semibold py-3 rounded-lg text-sm">
+              Войдите, чтобы откликнуться
+            </button>
+          )}
+          {isUrgent && (
+            <button 
+              onClick={() => setShowCommentsModal(request)}
+              className="flex items-center justify-center w-12 bg-emerald-50 text-emerald-600 rounded-lg hover:bg-emerald-100 transition-colors">
+              <MessageCircle className="w-5 h-5" />
+            </button>
+          )}
+        </div>
       </div>
     );
   };
@@ -239,6 +305,94 @@ function MicroYardym() {
             <div className="flex gap-3">
               <button onClick={() => setShowCloseModal(null)} className="flex-1 py-3 border border-gray-200 rounded-xl text-gray-600">Отмена</button>
               <button onClick={() => handleClose(showCloseModal)} className="flex-1 bg-emerald-500 text-white py-3 rounded-xl font-medium hover:bg-emerald-600">Закрыть</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Comments Modal */}
+      {showCommentsModal && (
+        <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center modal-overlay" onClick={() => setShowCommentsModal(null)}>
+          <div className="bg-white w-full max-w-md h-[80vh] sm:h-[600px] rounded-t-2xl sm:rounded-2xl flex flex-col animate-slide-up" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-4 border-b border-gray-100">
+              <div>
+                <h2 className="text-lg font-bold text-gray-800">Обсуждение</h2>
+                <p className="text-xs text-gray-500 truncate max-w-[250px]">{showCommentsModal.title}</p>
+              </div>
+              <button onClick={() => setShowCommentsModal(null)} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
+                <X className="w-5 h-5 text-gray-500" />
+              </button>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50">
+              {loadingComments ? (
+                <div className="flex justify-center py-8">
+                  <div className="w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+                </div>
+              ) : comments.length === 0 ? (
+                <div className="text-center py-8">
+                  <MessageCircle className="w-12 h-12 text-gray-200 mx-auto mb-3" />
+                  <p className="text-gray-500">Пока нет комментариев</p>
+                  <p className="text-sm text-gray-400 mt-1">Напишите первым, чтобы уточнить детали</p>
+                </div>
+              ) : (
+                comments.map(comment => (
+                  <div key={comment.id} className={`flex gap-3 ${comment.author_id === user?.id ? 'flex-row-reverse' : ''}`}>
+                    <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0 overflow-hidden">
+                      {comment.author?.avatar_url ? (
+                        <img src={comment.author.avatar_url} alt="" className="w-full h-full object-cover" />
+                      ) : (
+                        <span className="text-emerald-700 font-medium text-sm">
+                          {(comment.author?.name || 'U')[0].toUpperCase()}
+                        </span>
+                      )}
+                    </div>
+                    <div className={`max-w-[80%] rounded-2xl px-4 py-2 ${
+                      comment.author_id === user?.id 
+                        ? 'bg-emerald-500 text-white rounded-tr-sm' 
+                        : 'bg-white border border-gray-100 text-gray-800 rounded-tl-sm shadow-sm'
+                    }`}>
+                      {comment.author_id !== user?.id && (
+                        <p className="text-xs font-medium text-emerald-600 mb-1">{comment.author?.name || 'Пользователь'}</p>
+                      )}
+                      <p className="text-sm whitespace-pre-wrap break-words">{comment.content}</p>
+                      <p className={`text-[10px] mt-1 text-right ${comment.author_id === user?.id ? 'text-emerald-100' : 'text-gray-400'}`}>
+                        {format(new Date(comment.created_at), 'HH:mm')}
+                      </p>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            <div className="p-4 bg-white border-t border-gray-100">
+              {user ? (
+                <div className="flex items-end gap-2">
+                  <textarea
+                    value={newComment}
+                    onChange={e => setNewComment(e.target.value)}
+                    placeholder="Написать комментарий..."
+                    className="flex-1 max-h-32 min-h-[44px] bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all resize-none"
+                    rows={1}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        handleAddComment();
+                      }
+                    }}
+                  />
+                  <button 
+                    onClick={handleAddComment}
+                    disabled={!newComment.trim()}
+                    className="w-11 h-11 flex items-center justify-center bg-emerald-500 text-white rounded-xl hover:bg-emerald-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0">
+                    <Send className="w-5 h-5 ml-1" />
+                  </button>
+                </div>
+              ) : (
+                <div className="text-center py-2 text-sm text-gray-500">
+                  Войдите, чтобы оставлять комментарии
+                </div>
+              )}
             </div>
           </div>
         </div>

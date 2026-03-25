@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { User, Settings, Bell, Shield, LogOut, ChevronRight, Globe, Heart } from 'lucide-react';
+import { User, Settings, Bell, Shield, LogOut, ChevronRight, Globe, Heart, Star, Activity } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
+import { supabase } from '../lib/supabase';
 
 function Profile() {
   const navigate = useNavigate();
@@ -11,6 +12,103 @@ function Profile() {
   const [showNotifSettings, setShowNotifSettings] = useState(false);
   const [showSecurity, setShowSecurity] = useState(false);
   const [language, setLanguageState] = useState<'ru' | 'crh'>('ru');
+  
+  const [stats, setStats] = useState({
+    helpResponses: 0,
+    helpRequests: 0,
+    meetingsOrganized: 0,
+    trustScore: 0,
+    badges: [] as { id: string, name: string, icon: any, color: string, description: string }[]
+  });
+
+  useEffect(() => {
+    if (!user) return;
+
+    const fetchStats = async () => {
+      try {
+        // Fetch help responses
+        const { count: responsesCount } = await supabase
+          .from('help_responses')
+          .select('*', { count: 'exact', head: true })
+          .eq('user_id', user.id);
+
+        // Fetch help requests
+        const { count: requestsCount } = await supabase
+          .from('help_requests')
+          .select('*', { count: 'exact', head: true })
+          .eq('author_id', user.id);
+
+        // Fetch meetings organized
+        const { count: meetingsCount } = await supabase
+          .from('meetings')
+          .select('*', { count: 'exact', head: true })
+          .eq('author_id', user.id);
+
+        const rCount = responsesCount || 0;
+        const reqCount = requestsCount || 0;
+        const mCount = meetingsCount || 0;
+
+        // Calculate Trust Score
+        // Base score: 100
+        // +10 for each response
+        // +5 for each request created (active community member)
+        // +20 for each meeting organized
+        const calculatedTrustScore = 100 + (rCount * 10) + (reqCount * 5) + (mCount * 20);
+
+        // Determine Badges
+        const earnedBadges = [];
+        
+        if (rCount >= 1) {
+          earnedBadges.push({
+            id: 'helper_1',
+            name: 'Первый отклик',
+            icon: Heart,
+            color: 'text-rose-500 bg-rose-50 border-rose-200',
+            description: 'Откликнулся на просьбу о помощи'
+          });
+        }
+        if (rCount >= 5) {
+          earnedBadges.push({
+            id: 'helper_5',
+            name: 'Надежный помощник',
+            icon: Shield,
+            color: 'text-emerald-500 bg-emerald-50 border-emerald-200',
+            description: 'Помог 5 раз'
+          });
+        }
+        if (mCount >= 1) {
+          earnedBadges.push({
+            id: 'organizer',
+            name: 'Организатор',
+            icon: Star,
+            color: 'text-amber-500 bg-amber-50 border-amber-200',
+            description: 'Организовал встречу'
+          });
+        }
+        if (reqCount >= 1) {
+          earnedBadges.push({
+            id: 'active',
+            name: 'Активный участник',
+            icon: Activity,
+            color: 'text-blue-500 bg-blue-50 border-blue-200',
+            description: 'Создал обращение'
+          });
+        }
+
+        setStats({
+          helpResponses: rCount,
+          helpRequests: reqCount,
+          meetingsOrganized: mCount,
+          trustScore: profile?.trust_score || calculatedTrustScore,
+          badges: earnedBadges
+        });
+      } catch (error) {
+        console.error('Error fetching stats:', error);
+      }
+    };
+
+    fetchStats();
+  }, [user, profile]);
 
   if (!user || !profile) {
     return (
@@ -83,6 +181,48 @@ function Profile() {
         </div>
       </div>
 
+      {/* Stats & Trust Score */}
+      <div className="px-4 pb-4">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-bold text-gray-800">Рейтинг доверия</h3>
+            <div className="flex items-center gap-1 bg-emerald-50 text-emerald-700 px-2 py-1 rounded-lg font-bold">
+              <Shield className="w-4 h-4" />
+              {stats.trustScore}
+            </div>
+          </div>
+          
+          <div className="grid grid-cols-3 gap-3 mb-4">
+            <div className="bg-gray-50 rounded-lg p-3 text-center">
+              <div className="text-xl font-bold text-gray-800">{stats.helpResponses}</div>
+              <div className="text-xs text-gray-500">Откликов</div>
+            </div>
+            <div className="bg-gray-50 rounded-lg p-3 text-center">
+              <div className="text-xl font-bold text-gray-800">{stats.helpRequests}</div>
+              <div className="text-xs text-gray-500">Обращений</div>
+            </div>
+            <div className="bg-gray-50 rounded-lg p-3 text-center">
+              <div className="text-xl font-bold text-gray-800">{stats.meetingsOrganized}</div>
+              <div className="text-xs text-gray-500">Встреч</div>
+            </div>
+          </div>
+
+          {stats.badges.length > 0 && (
+            <div>
+              <h3 className="font-bold text-gray-800 mb-3 text-sm">Достижения</h3>
+              <div className="flex flex-wrap gap-2">
+                {stats.badges.map(badge => (
+                  <div key={badge.id} className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border ${badge.color}`} title={badge.description}>
+                    <badge.icon className="w-4 h-4" />
+                    <span className="text-xs font-medium">{badge.name}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
       {/* Language */}
       <div className="px-4 pb-4">
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
@@ -122,13 +262,13 @@ function Profile() {
         </div>
       </div>
 
-      {profile.role === 'admin' && (
+      {(profile.role === 'admin' || profile.role === 'moderator') && (
         <div className="px-4 pb-4">
           <button onClick={() => navigate('/admin')}
             className="w-full bg-purple-500 text-white rounded-xl px-4 py-4 flex items-center justify-between hover:bg-purple-600 transition-colors">
             <div className="flex items-center gap-3">
               <Shield className="w-5 h-5" />
-              <span className="font-medium">Админ-панель</span>
+              <span className="font-medium">{profile.role === 'admin' ? 'Админ-панель' : 'Панель модератора'}</span>
             </div>
             <ChevronRight className="w-5 h-5" />
           </button>

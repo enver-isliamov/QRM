@@ -20,7 +20,7 @@ import Admin from './pages/Admin'
 import YandexMetrika from './components/YandexMetrika'
 import './index.css'
 
-function ProtectedRoute({ children, requireAdmin = false }: { children: React.ReactNode; requireAdmin?: boolean }) {
+function ProtectedRoute({ children, requireStaff = false }: { children: React.ReactNode; requireStaff?: boolean }) {
   const { isAuthenticated, profile, loading } = useAuth()
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center">
@@ -28,7 +28,7 @@ function ProtectedRoute({ children, requireAdmin = false }: { children: React.Re
     </div>
   )
   if (!isAuthenticated) return <Navigate to="/login" replace />
-  if (requireAdmin && profile?.role !== 'admin') return <Navigate to="/" replace />
+  if (requireStaff && profile?.role !== 'admin' && profile?.role !== 'moderator') return <Navigate to="/" replace />
   return <>{children}</>
 }
 
@@ -54,7 +54,7 @@ export default function App() {
           <Route path="support"           element={<Support />} />
           <Route path="profile"           element={<Profile />} />
           <Route path="admin"             element={
-            <ProtectedRoute requireAdmin><Admin /></ProtectedRoute>
+            <ProtectedRoute requireStaff><Admin /></ProtectedRoute>
           } />
         </Route>
       </Routes>

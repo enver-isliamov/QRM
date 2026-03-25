@@ -15,6 +15,7 @@ export type Profile = {
   language?: 'ru' | 'crh'; phone?: string | null
   bio?: string | null; village?: string | null
   created_at: string; last_login: string
+  trust_score?: number; badges?: string[]
 }
 
 export type PrayerTimeRow = {
@@ -38,6 +39,12 @@ export type RitualStepRow = {
   id: number; ritual_id: string; step_order: number
   title: string; title_crh?: string
   description?: string; description_crh?: string
+}
+
+export type HelpRequestCommentRow = {
+  id: string; request_id: string; author_id: string
+  content: string; created_at: string
+  author?: { name: string; avatar_url: string | null; role: string }
 }
 
 export type HelpRequestRow = {

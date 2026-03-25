@@ -16,7 +16,8 @@ export default function Admin() {
   const navigate = useNavigate()
   const { profile } = useAuth()
   const { featureToggles, setFeatureToggle } = useStore()
-  const [tab, setTab] = useState<Tab>('stats')
+  const isModerator = profile?.role === 'moderator'
+  const [tab, setTab] = useState<Tab>(isModerator ? 'events' : 'stats')
   const [stats, setStats] = useState<Record<string, number>>({})
   const [users, setUsers] = useState<UserRow[]>([])
   const [events, setEvents] = useState<EventRow[]>([])
@@ -35,11 +36,11 @@ export default function Admin() {
 
   const loadTab = async (t: Tab) => {
     setLoading(true)
-    if (t === 'stats') {
+    if (t === 'stats' && !isModerator) {
       const { data } = await supabase.from('admin_stats').select('*').single()
       if (data) setStats(data as any)
     }
-    if (t === 'users') {
+    if (t === 'users' && !isModerator) {
       const { data } = await supabase.from('profiles').select('*').order('created_at', { ascending: false })
       if (data) setUsers(data as UserRow[])
     }
@@ -89,7 +90,13 @@ export default function Admin() {
   }
 
   const updateUserRole = async (uid: string, role: string) => {
-    await supabase.from('profiles').update({ role }).eq('id', uid)
+    if (isModerator) return
+    const { error } = await supabase.from('profiles').update({ role }).eq('id', uid)
+    if (error) {
+      console.error('Error updating role:', error)
+      showToast('Ошибка при изменении роли')
+      return
+    }
     setUsers(prev => prev.map(u => u.id === uid ? { ...u, role } : u))
     setEditUser(null); showToast('Роль изменена ✓')
   }
@@ -99,15 +106,16 @@ export default function Admin() {
     loadTab('help'); showToast('Обращение закрыто')
   }
 
-  const tabs = [
-    { id: 'stats'    as Tab, label: 'Статистика',   icon: BarChart3 },
-    { id: 'users'    as Tab, label: 'Пользователи', icon: Users },
-    { id: 'events'   as Tab, label: 'Календарь',    icon: Settings },
-    { id: 'help'     as Tab, label: 'Ярдым',         icon: Shield },
-    { id: 'meetings' as Tab, label: 'Встречи',       icon: Settings },
-    { id: 'rituals'  as Tab, label: 'Обряды',        icon: BookOpen },
-    { id: 'settings' as Tab, label: 'Настройки',     icon: ToggleRight },
+  const allTabs = [
+    { id: 'stats'    as Tab, label: 'Статистика',   icon: BarChart3, show: !isModerator },
+    { id: 'users'    as Tab, label: 'Пользователи', icon: Users,     show: !isModerator },
+    { id: 'events'   as Tab, label: 'Календарь',    icon: Settings,  show: true },
+    { id: 'help'     as Tab, label: 'Ярдым',         icon: Shield,    show: true },
+    { id: 'meetings' as Tab, label: 'Встречи',       icon: Settings,  show: true },
+    { id: 'rituals'  as Tab, label: 'Обряды',        icon: BookOpen,  show: true },
+    { id: 'settings' as Tab, label: 'Настройки',     icon: ToggleRight, show: !isModerator },
   ]
+  const tabs = allTabs.filter(t => t.show)
 
   const statCards = [
     { key: 'total_users',     label: 'Пользователей',    color: 'text-purple-600', bg: 'bg-purple-50' },
