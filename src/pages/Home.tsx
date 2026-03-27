@@ -1,7 +1,8 @@
 import { useNavigate } from 'react-router-dom'
-import { ChevronRight, Clock, MapPin, Heart, AlertCircle, Share2 } from 'lucide-react'
+import { ChevronRight, Clock, MapPin, Heart, AlertCircle, Share2, Check } from 'lucide-react'
 import { useEthnoEvents } from '../hooks/useEthnoEvents'
-import { usePrayerTimesForDate } from '../hooks/usePrayerTimes'
+import { usePrayerTimesForDate, usePrayerCompletions } from '../hooks/usePrayerTimes'
+import { useNextPrayer } from '../hooks/useNextPrayer'
 import { useHelpRequests } from '../hooks/useHelpRequests'
 import { useMeetings } from '../hooks/useMeetings'
 import { useAuth } from '../hooks/useAuth'
@@ -17,6 +18,8 @@ export default function Home() {
   const { featureToggles } = useStore()
   const { upcoming } = useEthnoEvents()
   const { prayers } = usePrayerTimesForDate(new Date())
+  const { currentPrayer, nextPrayer, timeRemaining } = useNextPrayer()
+  const { completed } = usePrayerCompletions(user?.id ?? null, new Date())
   const { urgent } = useHelpRequests()
   const { meetings } = useMeetings(user?.id)
 
@@ -59,14 +62,43 @@ export default function Home() {
             <span className="text-xs opacity-70">{format(new Date(), 'd MMMM', { locale: ru })}</span>
           </div>
           {prayers ? (
-            <div className="grid grid-cols-3 gap-2">
-              {prayerNames.filter(p => p.key !== 'sunrise').slice(0, 3).map(prayer => (
-                <div key={prayer.key} className="bg-white/20 rounded-xl p-2 text-center">
-                  <div className="text-xs opacity-80 mb-0.5">{prayer.name}</div>
-                  <div className="text-lg font-bold">{(prayers as any)[prayer.key]}</div>
+            <>
+              {nextPrayer && timeRemaining && (
+                <div className="bg-white/10 rounded-xl p-3 mb-3 flex items-center justify-between">
+                  <div>
+                    <p className="text-xs opacity-80">До {nextPrayer.name}</p>
+                    <p className="text-xl font-bold font-mono tracking-wider">{timeRemaining}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs opacity-80">След. намаз</p>
+                    <p className="text-lg font-semibold">{nextPrayer.timeStr}</p>
+                  </div>
                 </div>
-              ))}
-            </div>
+              )}
+              <div className="grid grid-cols-3 gap-2">
+                {prayerNames.filter(p => p.key !== 'sunrise').slice(0, 3).map(prayer => {
+                  const isCurrent = currentPrayer?.key === prayer.key;
+                  const isCompleted = completed.includes(prayer.key);
+                  return (
+                    <div key={prayer.key} className={`rounded-xl p-2 text-center transition-colors relative ${isCurrent ? 'bg-white/30 ring-1 ring-white/50' : 'bg-white/20'}`}>
+                      {isCompleted && (
+                        <div className="absolute -top-1 -right-1 w-4 h-4 bg-emerald-400 rounded-full border-2 border-emerald-600 flex items-center justify-center">
+                          <Check className="w-2.5 h-2.5 text-white" />
+                        </div>
+                      )}
+                      <div className="text-xs opacity-80 mb-0.5">{prayer.name}</div>
+                      <div className="text-lg font-bold">{(prayers as any)[prayer.key]}</div>
+                    </div>
+                  );
+                })}
+              </div>
+              {user && (
+                <div className="mt-3 pt-3 border-t border-white/20 flex items-center justify-between text-sm">
+                  <span className="opacity-90">Выполнено сегодня:</span>
+                  <span className="font-bold">{completed.length} / 5</span>
+                </div>
+              )}
+            </>
           ) : (
             <p className="text-sm opacity-70 text-center py-2">Нажмите для просмотра расписания →</p>
           )}

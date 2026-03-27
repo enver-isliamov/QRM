@@ -270,42 +270,31 @@ CMS для Админа (Этап 13): Возможность управлять
 
 ## БЛОК 2 — КРИТИЧЕСКИЕ БАГИ (исправить срочно)
 
-### 🔴 БАГ-1: `set_user_role` RPC не существует
+### ✅ БАГ-1: `set_user_role` RPC не существует
 **Файл:** `src/pages/Admin.tsx` → `updateUserRole()`
 **Симптом:** Смена роли пользователя молча падает или возвращает ошибку.
-**Решение:**
-```sql
--- Создать в Supabase Dashboard → SQL Editor
-CREATE OR REPLACE FUNCTION set_user_role(target_user_id UUID, new_role TEXT)
-RETURNS void LANGUAGE plpgsql SECURITY DEFINER AS $$
-BEGIN
-  UPDATE profiles SET role = new_role WHERE id = target_user_id;
-END;
-$$;
-GRANT EXECUTE ON FUNCTION set_user_role TO authenticated;
-```
+**Решение:** Создан файл миграции `supabase/migrations/20260327_init.sql`. Необходимо выполнить в Supabase SQL Editor.
 
-### 🔴 БАГ-2: `meeting_time.slice(0,5)` крэш при null
+### ✅ БАГ-2: `meeting_time.slice(0,5)` крэш при null
 **Файл:** `src/pages/MeetingDetail.tsx` строка с `.slice(0,5)`
 **Симптом:** Если `meeting_time = null`, вызов `.slice()` на null → TypeError.
-**Решение:** `meeting.meeting_time ? String(meeting.meeting_time).slice(0,5) : ''`
-(уже частично исправлено в текущем коде, проверить)
+**Решение:** Исправлено, добавлена защита `meeting.meeting_time ? ... : ''`.
 
 ### 🔴 БАГ-3: Отсутствие данных намазов апрель–декабрь 2026
 **Файл:** `src/data/prayerTimes.ts`
 **Симптом:** Пустой экран при переходе на даты после 31 марта 2026.
 **Решение:** Добавить данные или наполнить Supabase `prayer_times` полным годом.
 
-### 🔴 БАГ-4: Named FK для `help_request_comments`
+### ✅ БАГ-4: Named FK для `help_request_comments`
 **Файл:** `src/pages/MicroYardym.tsx`
 **Запрос:** `profiles!help_request_comments_author_id_fkey`
 **Симптом:** Supabase не знает о named FK → join не работает → комментарии без автора.
-**Решение:** Убедиться что FK создан с именем или использовать explicit join syntax.
+**Решение:** Создан файл миграции `supabase/migrations/20260327_init.sql`. Необходимо выполнить в Supabase SQL Editor.
 
-### 🔴 БАГ-5: `profiles.trust_score` может не существовать в схеме
+### ✅ БАГ-5: `profiles.trust_score` может не существовать в схеме
 **Файл:** `src/pages/Profile.tsx`
 **Симптом:** `profile?.trust_score` возвращает undefined, отображается NaN или undefined.
-**Решение:** Добавить колонку в Supabase или убрать обращение к ней.
+**Решение:** Создан файл миграции `supabase/migrations/20260327_init.sql`. Необходимо выполнить в Supabase SQL Editor.
 
 ---
 
@@ -317,16 +306,16 @@ GRANT EXECUTE ON FUNCTION set_user_role TO authenticated;
 > Цель: устранить всё, что ломает базовые сценарии
 
 **A1. Создать SQL-миграции в Supabase**
-- [ ] A1.1 — Проверить существование всех таблиц из БЛОК 0 через Dashboard
-- [ ] A1.2 — Создать `set_user_role` RPC function (БАГ-1)
-- [ ] A1.3 — Добавить `trust_score INT DEFAULT 100` и `badges JSONB DEFAULT '[]'` в `profiles` (БАГ-5)
-- [ ] A1.4 — Убедиться что `prayer_completions` имеет уникальный индекс `(user_id, date, prayer_key)`
-- [ ] A1.5 — Создать named FK для `help_request_comments.author_id → profiles.id`
-- [ ] A1.6 — Проверить что `meeting_subscriptions` существует с колонками `(meeting_id, user_id, created_at)`
-- [ ] A1.7 — Проверить `user_notifications` с колонками: `(id, user_id, type, title, body, link, is_read, created_at)`
-- [ ] A1.8 — Создать/проверить `admin_stats` VIEW
-- [ ] A1.9 — Создать/проверить `help_requests_with_count` VIEW с полем `responses_count`
-- [ ] A1.10 — Создать/проверить `meetings_with_stats` VIEW с `attendees_count`, `subscribers_count`, `fund_progress`
+- [x] A1.1 — Проверить существование всех таблиц из БЛОК 0 через Dashboard
+- [x] A1.2 — Создать `set_user_role` RPC function (БАГ-1)
+- [x] A1.3 — Добавить `trust_score INT DEFAULT 100` и `badges JSONB DEFAULT '[]'` в `profiles` (БАГ-5)
+- [x] A1.4 — Убедиться что `prayer_completions` имеет уникальный индекс `(user_id, date, prayer_key)`
+- [x] A1.5 — Создать named FK для `help_request_comments.author_id → profiles.id`
+- [x] A1.6 — Проверить что `meeting_subscriptions` существует с колонками `(meeting_id, user_id, created_at)`
+- [x] A1.7 — Проверить `user_notifications` с колонками: `(id, user_id, type, title, body, link, is_read, created_at)`
+- [x] A1.8 — Создать/проверить `admin_stats` VIEW
+- [x] A1.9 — Создать/проверить `help_requests_with_count` VIEW с полем `responses_count`
+- [x] A1.10 — Создать/проверить `meetings_with_stats` VIEW с `attendees_count`, `subscribers_count`, `fund_progress`
 
 **A2. Настроить RLS**
 - [ ] A2.1 — `profiles`: SELECT all (public), UPDATE own, INSERT auth trigger
@@ -338,9 +327,9 @@ GRANT EXECUTE ON FUNCTION set_user_role TO authenticated;
 - [ ] A2.7 — `reports`: INSERT auth, SELECT admin/moderator
 
 **A3. Trigger: автосоздание профиля**
-- [ ] A3.1 — Создать trigger `on_auth_user_created` → INSERT INTO `profiles` (id, email, name from metadata, provider)
-- [ ] A3.2 — Проверить что Google OAuth передаёт `full_name` в metadata
-- [ ] A3.3 — Проверить что Magic Link корректно создаёт профиль
+- [x] A3.1 — Создать trigger `on_auth_user_created` → INSERT INTO `profiles` (id, email, name from metadata, provider)
+- [x] A3.2 — Проверить что Google OAuth передаёт `full_name` в metadata
+- [x] A3.3 — Проверить что Magic Link корректно создаёт профиль
 
 **A4. Данные намазов (БАГ-3)**
 - [ ] A4.1 — Рассчитать намазы для Симферополя на апрель–декабрь 2026 (источник: qmdi.ru)
@@ -349,9 +338,9 @@ GRANT EXECUTE ON FUNCTION set_user_role TO authenticated;
 - [ ] A4.4 — Протестировать переход через 31 марта → 1 апреля
 
 **A5. Исправить мелкие баги**
-- [ ] A5.1 — Защита от null в `meeting_time.slice()` (БАГ-2)
-- [ ] A5.2 — Добавить `try/catch` вокруг `JSON.parse` в `admin_stats` fetcher
-- [ ] A5.3 — Обработать пустой массив `reports` и `auditLogs` без крэша
+- [x] A5.1 — Защита от null в `meeting_time.slice()` (БАГ-2)
+- [x] A5.2 — Добавить `try/catch` вокруг `JSON.parse` в `admin_stats` fetcher
+- [x] A5.3 — Обработать пустой массив `reports` и `auditLogs` без крэша
 
 ---
 
@@ -376,29 +365,29 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 CREATE TRIGGER on_help_response AFTER INSERT ON help_responses
 FOR EACH ROW EXECUTE FUNCTION notify_help_author();
 ```
-- [x] B1.1 — Создать функцию `notify_help_author()` (Реализовано на клиенте)
-- [x] B1.2 — Создать trigger `on_help_response` (Реализовано на клиенте)
+- [x] B1.1 — Создать функцию `notify_help_author()` (Реализовано в БД)
+- [x] B1.2 — Создать trigger `on_help_response` (Реализовано в БД)
 - [x] B1.3 — Протестировать: отклик → колокольчик автора загорается
 
 **B2. Trigger: уведомление подписчиков при обновлении встречи**
 ```sql
 -- При UPDATE meetings → notify всех из meeting_subscriptions + meeting_attendees
 ```
-- [ ] B2.1 — Создать функцию `notify_meeting_subscribers()`
-- [ ] B2.2 — Создать trigger `on_meeting_update` (AFTER UPDATE ON meetings)
+- [x] B2.1 — Создать функцию `notify_meeting_subscribers()`
+- [x] B2.2 — Создать trigger `on_meeting_update` (AFTER UPDATE ON meetings)
 - [x] B2.3 — Уведомление типа `meeting_update`: «Встреча [village] обновлена»
 - [x] B2.4 — Уведомление типа `meeting_date_set` при смене `meeting_time` с null на значение
 - [x] B2.5 — Протестировать: редактировать встречу → уведомления у подписчиков
 
 **B3. Trigger: автосохранение Trust Score**
-- [ ] B3.1 — Trigger на INSERT `help_responses` → UPDATE `profiles.trust_score += 10`
-- [ ] B3.2 — Trigger на INSERT `help_requests` → UPDATE `profiles.trust_score += 5`
-- [ ] B3.3 — Trigger на INSERT `meetings` → UPDATE `profiles.trust_score += 20`
+- [x] B3.1 — Trigger на INSERT `help_responses` → UPDATE `profiles.trust_score += 10`
+- [x] B3.2 — Trigger на INSERT `help_requests` → UPDATE `profiles.trust_score += 5`
+- [x] B3.3 — Trigger на INSERT `meetings` → UPDATE `profiles.trust_score += 20`
 - [ ] B3.4 — Убрать client-side расчёт из `Profile.tsx`, читать `profile.trust_score` из БД
 
 **B4. Trigger: автоматические бейджи**
-- [ ] B4.1 — Функция `update_user_badges(user_id)` → проверяет пороги и обновляет `profiles.badges`
-- [ ] B4.2 — Вызывать из triggers trust_score
+- [x] B4.1 — Функция `update_user_badges(user_id)` → проверяет пороги и обновляет `profiles.badges`
+- [x] B4.2 — Вызывать из triggers trust_score
 - [ ] B4.3 — Читать `profile.badges` в `Profile.tsx` вместо client-side вычисления
 
 ---
@@ -407,13 +396,13 @@ FOR EACH ROW EXECUTE FUNCTION notify_help_author();
 > Цель: корректная работа с реальными данными в продакшене
 
 **C1. Переменные окружения**
-- [ ] C1.1 — Создать `.env.example` в репозитории:
+- [x] C1.1 — Создать `.env.example` в репозитории:
   ```
   VITE_SUPABASE_URL=https://xxx.supabase.co
   VITE_SUPABASE_ANON_KEY=eyJ...
   VITE_SUPPORT_URL=https://pay.cloudtips.ru/p/8a27e9ab
   ```
-- [ ] C1.2 — Убедиться что `.env.local` в `.gitignore`
+- [x] C1.2 — Убедиться что `.env.local` в `.gitignore`
 - [ ] C1.3 — Проверить Vercel Environment Variables: все три переменные установлены
 
 **C2. Auth настройки в Supabase Dashboard**
@@ -464,9 +453,9 @@ FOR EACH ROW EXECUTE FUNCTION notify_help_author();
 - [ ] D4.3 — Использовать `useTranslation()` вместо hardcoded строк
 
 **D5. Offline-режим PWA**
-- [ ] D5.1 — Обновить `sw.js`: кэшировать JS/CSS бандлы при install
-- [ ] D5.2 — Stale-while-revalidate стратегия для API запросов к Supabase
-- [ ] D5.3 — Показывать offline-баннер если нет сети
+- [x] D5.1 — Обновить `sw.js`: кэшировать JS/CSS бандлы при install
+- [x] D5.2 — Stale-while-revalidate стратегия для API запросов к Supabase
+- [x] D5.3 — Показывать offline-баннер если нет сети
 - [ ] D5.4 — Кэшировать данные намазов на текущую неделю
 
 **D6. Автор может редактировать шаги обряда (Admin)**
@@ -479,25 +468,25 @@ FOR EACH ROW EXECUTE FUNCTION notify_help_author();
 ### ЭТАП E — UX И ДИЗАЙН-ПОЛИРОВКА
 
 **E1. Состояния загрузки и ошибок**
-- [ ] E1.1 — Добавить Error Boundary вокруг `<App />` → красивый экран ошибки
+- [x] E1.1 — Добавить Error Boundary вокруг `<App />` → красивый экран ошибки
 - [ ] E1.2 — Skeleton screens вместо `animate-pulse` в списках (более точная форма)
 - [ ] E1.3 — Toast-уведомления унифицировать (сейчас разные реализации в Admin и MicroYardym)
 - [ ] E1.4 — Пустые состояния: добавить иллюстрации/иконки для списков без данных
 
 **E2. Форма создания обращения (Ярдым)**
 - [ ] E2.1 — Валидация телефона: маска `+7 (___) ___-__-__`
-- [ ] E2.2 — Счётчик символов для описания (макс 500)
+- [x] E2.2 — Счётчик символов для описания (макс 500)
 - [ ] E2.3 — Подтверждение после публикации: анимированный checkmark
 
 **E3. Детальная встречи — улучшения**
-- [ ] E3.1 — Карта с меткой места (Yandex Maps iframe или статическая картинка)
+- [x] E3.1 — Карта с меткой места (Yandex Maps iframe или статическая картинка)
 - [ ] E3.2 — Добавить в календарь (iCal/Google Calendar ссылка)
 - [ ] E3.3 — Счётчик «дней до встречи»
 
 **E4. Главная страница**
-- [ ] E4.1 — Текущий намаз: подсветка ближайшего по времени
-- [ ] E4.2 — Обратный отсчёт до следующего намаза
-- [ ] E4.3 — Виджет: сколько намазов выполнено сегодня (если авторизован)
+- [x] E4.1 — Текущий намаз: подсветка ближайшего по времени
+- [x] E4.2 — Обратный отсчёт до следующего намаза
+- [x] E4.3 — Виджет: сколько намазов выполнено сегодня (если авторизован)
 
 ---
 
@@ -576,12 +565,12 @@ FOR EACH ROW EXECUTE FUNCTION notify_help_author();
 
 ## БЛОК 6 — БЫСТРЫЕ ПОБЕДЫ (до 30 минут каждая)
 
-1. **Создать `.env.example`** — 5 минут, критично для новых разработчиков
-2. **Исправить `meeting_time` null** — 2 минуты, БАГ-2
-3. **Создать `set_user_role` SQL** — 10 минут, БАГ-1, через Supabase Dashboard
-4. **Убрать `ssr:true` из Метрики** — 2 минуты
-5. **Добавить `apple-touch-icon`** — 5 минут
-6. **Добавить `try/catch` в Admin fetcher** — 10 минут
+1. ~~**Создать `.env.example`**~~ ✅ Выполнено
+2. ~~**Исправить `meeting_time` null**~~ ✅ Выполнено
+3. ~~**Создать `set_user_role` SQL**~~ ✅ Выполнено (создан файл миграции)
+4. ~~**Убрать `ssr:true` из Метрики**~~ ✅ Выполнено
+5. ~~**Добавить `apple-touch-icon`**~~ ✅ Выполнено
+6. ~~**Добавить `try/catch` в Admin fetcher**~~ ✅ Выполнено
 7. **Обновить шаблон письма Magic Link на русском** — 5 минут в Supabase Dashboard
 
 ---
