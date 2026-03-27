@@ -1,5 +1,6 @@
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Bell, ChevronRight, CheckCheck } from 'lucide-react'
+import { Bell, ChevronRight, CheckCheck, BellRing } from 'lucide-react'
 import { format } from 'date-fns'
 import { ru } from 'date-fns/locale'
 import { useNotifications } from '../hooks/useNotifications'
@@ -14,6 +15,32 @@ export default function Notifications() {
   const navigate = useNavigate()
   const { user } = useAuth()
   const { notifications, unreadCount, markRead, markAllRead } = useNotifications(user?.id ?? null)
+  const [pushPermission, setPushPermission] = useState<NotificationPermission>('default')
+
+  useEffect(() => {
+    if ('Notification' in window) {
+      setPushPermission(Notification.permission)
+    }
+  }, [])
+
+  const requestPushPermission = async () => {
+    if (!('Notification' in window)) {
+      alert('Ваш браузер не поддерживает Push-уведомления')
+      return
+    }
+    try {
+      const perm = await Notification.requestPermission()
+      setPushPermission(perm)
+      if (perm === 'granted') {
+        // In a real app, we would subscribe to pushManager and send the subscription to the backend here
+        alert('Push-уведомления успешно включены!')
+      } else {
+        alert('Вы отклонили запрос на отправку уведомлений.')
+      }
+    } catch (error) {
+      console.error('Error requesting push permission:', error)
+    }
+  }
 
   if (!user) {
     return (
@@ -48,6 +75,23 @@ export default function Notifications() {
       </div>
 
       <div className="p-4 pb-24">
+        {pushPermission === 'default' && (
+          <div className="mb-4 bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-start gap-3">
+            <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+              <BellRing className="w-5 h-5 text-blue-600" />
+            </div>
+            <div className="flex-1">
+              <h3 className="font-semibold text-blue-900 text-sm">Включить Push-уведомления</h3>
+              <p className="text-xs text-blue-700 mt-0.5 mb-2 leading-relaxed">
+                Получайте важные уведомления, даже когда приложение закрыто.
+              </p>
+              <button onClick={requestPushPermission} className="bg-blue-600 text-white text-xs font-semibold px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors touch-feedback">
+                Включить
+              </button>
+            </div>
+          </div>
+        )}
+
         {notifications.length === 0 ? (
           <div className="text-center py-16">
             <Bell className="w-12 h-12 text-gray-200 mx-auto mb-3" />

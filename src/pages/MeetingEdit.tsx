@@ -155,7 +155,7 @@ export default function MeetingEdit() {
       </div>
 
       {toast && (
-        <div className="fixed bottom-20 left-1/2 -translate-x-1/2 bg-gray-800 text-white px-4 py-2 rounded-full text-sm z-50 shadow-lg">
+        <div className="fixed bottom-20 left-1/2 -translate-x-1/2 bg-gray-800 text-white px-4 py-2 rounded-full text-sm z-[100] shadow-lg">
           {toast}
         </div>
       )}

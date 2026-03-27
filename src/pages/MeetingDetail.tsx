@@ -246,7 +246,7 @@ function MeetingDetail() {
 
       {/* Edit fund modal */}
       {editingFund && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center modal-overlay" onClick={() => setEditingFund(false)}>
+        <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center modal-overlay" onClick={() => setEditingFund(false)}>
           <div className="bg-white w-full max-w-md rounded-t-2xl sm:rounded-2xl p-6 animate-slide-up" onClick={e => e.stopPropagation()}>
             <h2 className="text-xl font-bold text-gray-800 mb-4">Обновить сбор средств</h2>
             <div className="space-y-4">

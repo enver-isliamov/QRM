@@ -1,24 +1,21 @@
 import { useNavigate, useLocation } from 'react-router-dom'
 import { Home, Clock, Heart, MapPin, Grid3X3 } from 'lucide-react'
-
-// Bottom nav: 5 clear tabs
-// Home → дашборд
-// Намазы → расписание (часто используется)
-// Ярдым → взаимопомощь
-// Встречи → встречи сёл
-// Разделы → все остальные разделы (календарь, обряды, профиль)
-
-const navItems = [
-  { path: '/',               label: 'Главная',  icon: Home  },
-  { path: '/prayer-times',   label: 'Намазы',   icon: Clock },
-  { path: '/micro-yardym',   label: 'Ярдым',    icon: Heart },
-  { path: '/village-meetings', label: 'Встречи', icon: MapPin },
-  { path: '/sections',       label: 'Разделы',  icon: Grid3X3 },
-]
+import { useStore } from '../store/useStore'
+import { useTranslation } from 'react-i18next'
 
 export default function BottomNavigation() {
   const navigate = useNavigate()
   const location = useLocation()
+  const { featureToggles } = useStore()
+  const { t } = useTranslation()
+
+  const navItems = [
+    { path: '/',               label: t('nav.home'),  icon: Home,     show: true },
+    { path: '/prayer-times',   label: t('nav.namaz'),   icon: Clock,    show: true },
+    { path: '/micro-yardym',   label: t('nav.yardym'),    icon: Heart,    show: featureToggles.yardym },
+    { path: '/village-meetings', label: 'Встречи', icon: MapPin,   show: featureToggles.meetings },
+    { path: '/sections',       label: 'Разделы',  icon: Grid3X3,  show: true },
+  ]
 
   const isActive = (path: string) => {
     if (path === '/') return location.pathname === '/'
@@ -29,7 +26,7 @@ export default function BottomNavigation() {
   return (
     <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 safe-area-bottom z-50">
       <div className="max-w-md mx-auto flex justify-around items-center h-16">
-        {navItems.map(({ path, label, icon: Icon }) => {
+        {navItems.filter(item => item.show).map(({ path, label, icon: Icon }) => {
           const active = isActive(path)
           return (
             <button

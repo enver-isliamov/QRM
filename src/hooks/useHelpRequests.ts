@@ -35,7 +35,15 @@ export function useHelpRequests() {
     return { error }
   }
 
+  const closeRequest = async (requestId: string) => {
+    const { error } = await supabase.from('help_requests')
+      .update({ status: 'completed' })
+      .eq('id', requestId)
+    if (!error) await fetchRequests()
+    return { error }
+  }
+
   const urgent = requests.filter(r => r.urgency === 'urgent')
   const normal = requests.filter(r => r.urgency === 'normal')
-  return { requests, urgent, normal, loading, addRequest, respond }
+  return { requests, urgent, normal, loading, addRequest, respond, closeRequest }
 }
