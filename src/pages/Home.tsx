@@ -71,7 +71,7 @@ export default function Home() {
                   </div>
                   <div className="text-right">
                     <p className="text-xs opacity-80">След. намаз</p>
-                    <p className="text-lg font-semibold">{nextPrayer.timeStr}</p>
+                    <p className="text-lg font-semibold">{prayers ? (prayers as any)[nextPrayer.key] : ''}</p>
                   </div>
                 </div>
               )}
