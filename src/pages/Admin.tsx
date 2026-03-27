@@ -9,7 +9,7 @@ import useSWR from 'swr'
 type Tab = 'stats' | 'users' | 'events' | 'help' | 'meetings' | 'rituals' | 'settings' | 'moderation'
 type UserRow = { id: string; name: string; avatar_url?: string; role: string; provider: string; created_at: string }
 type EventRow = { id: string; event_date: string; title: string; title_crh?: string; description?: string; description_crh?: string; type: string }
-type HelpRow  = { id: string; title: string; type: string; urgency: string; status: string; location: string; created_at: string; responses_count?: number }
+type HelpRow  = { id: string; title: string; type: string; urgency: string; status: string; location: string; created_at: string; responses_count?: number; author_id?: string }
 type MeetRow  = { id: string; village: string; organizer: string; meeting_date: string; status: string; attendees_count?: number }
 type RitualRow = { id: string; title: string; title_crh?: string; subtitle?: string; subtitle_crh?: string; icon?: string; sort_order?: number }
 type ReportRow = { id: string; reporter_id: string; target_type: string; target_id: string; reason: string; description?: string; status: string; created_at: string }
@@ -146,7 +146,17 @@ export default function Admin() {
 
   const updateUserRole = async (uid: string, role: string) => {
     if (isModerator) return
-    const { error } = await supabase.rpc('set_user_role', { target_user_id: uid, new_role: role })
+    
+    // Try direct update first (in case RLS allows it)
+    let { error } = await supabase.from('profiles').update({ role }).eq('id', uid)
+    
+    // Fallback to RPC if direct update fails due to RLS
+    if (error) {
+      console.log('Direct update failed, trying RPC fallback...', error)
+      const { error: rpcError } = await supabase.rpc('set_user_role', { target_user_id: uid, new_role: role })
+      error = rpcError
+    }
+
     if (error) {
       console.error('Error updating role:', error)
       showToast('Ошибка при изменении роли')
@@ -324,6 +334,15 @@ export default function Admin() {
                         <button onClick={async () => {
                           await supabase.from('help_requests').update({ status: 'active' }).eq('id', r.id)
                           await logAudit('approve', 'help_requests', r.id)
+                          if (r.author_id) {
+                            await supabase.from('user_notifications').insert({
+                              user_id: r.author_id,
+                              type: 'system',
+                              title: 'Ваше обращение одобрено',
+                              body: `Ваше обращение "${r.title}" прошло модерацию и опубликовано.`,
+                              link: `/yardym/${r.id}`
+                            })
+                          }
                           loadTab('moderation'); showToast('Одобрено')
                         }} className="flex-1 bg-emerald-500 text-white py-2 rounded-xl text-sm font-medium hover:bg-emerald-600">
                           Одобрить
@@ -331,6 +350,14 @@ export default function Admin() {
                         <button onClick={async () => {
                           await supabase.from('help_requests').update({ status: 'rejected' }).eq('id', r.id)
                           await logAudit('reject', 'help_requests', r.id)
+                          if (r.author_id) {
+                            await supabase.from('user_notifications').insert({
+                              user_id: r.author_id,
+                              type: 'system',
+                              title: 'Ваше обращение отклонено',
+                              body: `Ваше обращение "${r.title}" не прошло модерацию.`
+                            })
+                          }
                           loadTab('moderation'); showToast('Отклонено')
                         }} className="flex-1 bg-rose-100 text-rose-700 py-2 rounded-xl text-sm font-medium hover:bg-rose-200">
                           Отклонить

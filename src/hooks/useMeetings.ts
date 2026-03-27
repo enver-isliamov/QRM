@@ -68,8 +68,32 @@ export function useMeetings(userId?: string | null) {
   }
 
   const updateMeeting = async (id: string, updates: Partial<MeetingRow>) => {
+    const meeting = meetings.find(m => m.id === id)
     const { error } = await supabase.from('meetings').update(updates).eq('id', id)
-    if (!error) await fetchMeetings()
+    if (!error) {
+      await fetchMeetings()
+      
+      const { data: subs } = await supabase.from('meeting_subscriptions').select('user_id').eq('meeting_id', id)
+      if (subs && subs.length > 0) {
+        const isDateSet = meeting && !meeting.meeting_time && updates.meeting_time
+        const type = isDateSet ? 'meeting_date_set' : 'meeting_update'
+        const title = isDateSet 
+          ? `Назначено время встречи в ${meeting.village}` 
+          : (meeting ? `Встреча в ${meeting.village} обновлена` : 'Встреча обновлена')
+        const body = isDateSet
+          ? `Время встречи: ${updates.meeting_time}`
+          : 'Организатор внес изменения в детали встречи.'
+          
+        const notifications = subs.map(sub => ({
+          user_id: sub.user_id,
+          type: type,
+          title: title,
+          body: body,
+          link: `/meetings/${id}`
+        }))
+        await supabase.from('user_notifications').insert(notifications)
+      }
+    }
     return { error }
   }
 

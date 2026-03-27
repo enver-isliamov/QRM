@@ -31,7 +31,19 @@ export function useHelpRequests() {
   const respond = async (requestId: string, userId?: string) => {
     const { error } = await supabase.from('help_responses')
       .insert({ request_id: requestId, user_id: userId ?? null })
-    if (!error) setRequests(prev => prev.map(r => r.id === requestId ? { ...r, responses_count: (r.responses_count ?? 0) + 1 } : r))
+    if (!error) {
+      setRequests(prev => prev.map(r => r.id === requestId ? { ...r, responses_count: (r.responses_count ?? 0) + 1 } : r))
+      const request = requests.find(r => r.id === requestId)
+      if (request && request.author_id && request.author_id !== userId) {
+        await supabase.from('user_notifications').insert({
+          user_id: request.author_id,
+          type: 'help_response',
+          title: 'Новый отклик',
+          body: `Кто-то откликнулся на вашу просьбу "${request.title}".`,
+          link: `/yardym/${requestId}`
+        })
+      }
+    }
     return { error }
   }
 
@@ -43,7 +55,15 @@ export function useHelpRequests() {
     return { error }
   }
 
+  const updateRequest = async (requestId: string, updates: Partial<HelpRequestRow>) => {
+    const { error } = await supabase.from('help_requests')
+      .update(updates)
+      .eq('id', requestId)
+    if (!error) await fetchRequests()
+    return { error }
+  }
+
   const urgent = requests.filter(r => r.urgency === 'urgent')
   const normal = requests.filter(r => r.urgency === 'normal')
-  return { requests, urgent, normal, loading, addRequest, respond, closeRequest }
+  return { requests, urgent, normal, loading, addRequest, respond, closeRequest, updateRequest }
 }

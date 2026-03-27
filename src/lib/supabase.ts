@@ -53,6 +53,7 @@ export type HelpRequestRow = {
   urgency: 'urgent' | 'normal'; title: string
   location: string; description: string
   contact_phone?: string
+  cloudtips_url?: string | null
   status: 'active' | 'completed' | 'cancelled' | 'pending' | 'rejected'
   created_at: string; updated_at: string
   responses_count?: number

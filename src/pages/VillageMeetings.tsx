@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { MapPin, Calendar, Plus, X, Bell, Users, ChevronRight } from 'lucide-react';
+import { MapPin, Calendar, Plus, X, Bell, Users, ChevronRight, Search } from 'lucide-react';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { useNavigate } from 'react-router-dom';
@@ -10,15 +10,26 @@ import { MeetingRow } from '../lib/supabase';
 function VillageMeetings() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { meetings, loading, toggleAttend, toggleSubscribe, addMeeting, isGoing, isSubscribed } = useMeetings(user?.id ?? null);
+  const { meetings, loading, toggleAttend, toggleSubscribe, addMeeting, updateMeeting, isGoing, isSubscribed } = useMeetings(user?.id ?? null);
   const [showAdd, setShowAdd] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [form, setForm] = useState({ village: '', organizer: '', location: '', meeting_date: '', description: '', organizer_phone: '', fund_purpose: '', fund_goal: '' });
+  const [searchQuery, setSearchQuery] = useState('');
+  const [form, setForm] = useState({ village: '', organizer: '', location: '', meeting_date: '', description: '', organizer_phone: '', fund_purpose: '', fund_goal: '', fund_cloudtips_url: '' });
+
+  const filteredMeetings = meetings.filter(m => {
+    const matchesSearch = m.village.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                          (m.description && m.description.toLowerCase().includes(searchQuery.toLowerCase())) ||
+                          (m.location && m.location.toLowerCase().includes(searchQuery.toLowerCase())) ||
+                          m.organizer.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesSearch;
+  });
 
   const handleAdd = async () => {
     if (!form.village || !form.meeting_date || !user) return;
     setSubmitting(true);
-    await addMeeting({
+    
+    const data = {
       village: form.village, village_crh: form.village,
       organizer: form.organizer || 'Оргкомитет',
       location: form.location || undefined,
@@ -27,11 +38,20 @@ function VillageMeetings() {
       organizer_phone: form.organizer_phone || undefined,
       fund_purpose: form.fund_purpose || undefined,
       fund_goal: form.fund_goal ? +form.fund_goal : undefined,
+      fund_cloudtips_url: form.fund_cloudtips_url || undefined,
       status: 'upcoming',
-    } as any, user.id);
+    };
+
+    if (editingId) {
+      await updateMeeting(editingId, data as any);
+    } else {
+      await addMeeting(data as any, user.id);
+    }
+    
     setSubmitting(false);
     setShowAdd(false);
-    setForm({ village: '', organizer: '', location: '', meeting_date: '', description: '', organizer_phone: '', fund_purpose: '', fund_goal: '' });
+    setEditingId(null);
+    setForm({ village: '', organizer: '', location: '', meeting_date: '', description: '', organizer_phone: '', fund_purpose: '', fund_goal: '', fund_cloudtips_url: '' });
   };
 
   const MeetingCard = ({ m }: { m: MeetingRow }) => {
@@ -75,6 +95,27 @@ function VillageMeetings() {
 
         {/* Action bar */}
         <div className="px-4 pb-4 flex gap-2">
+          {user?.id === m.author_id && (
+            <button
+              onClick={() => {
+                setForm({
+                  village: m.village,
+                  organizer: m.organizer,
+                  location: m.location || '',
+                  meeting_date: m.meeting_date.split('T')[0],
+                  description: m.description || '',
+                  organizer_phone: m.organizer_phone || '',
+                  fund_purpose: m.fund_purpose || '',
+                  fund_goal: m.fund_goal?.toString() || '',
+                  fund_cloudtips_url: m.fund_cloudtips_url || ''
+                });
+                setEditingId(m.id);
+                setShowAdd(true);
+              }}
+              className="p-2.5 rounded-lg border border-emerald-200 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 transition-colors">
+              <Plus className="w-4 h-4 rotate-45" />
+            </button>
+          )}
           {!m.meeting_time && user && (
             <button onClick={() => toggleSubscribe(m.id)}
               title={subbed ? 'Отписаться от уведомлений' : 'Подписаться на уведомления'}
@@ -97,7 +138,7 @@ function VillageMeetings() {
   return (
     <div className="animate-fade-in min-h-screen bg-gray-50">
       <div className="bg-white px-4 py-4 border-b border-gray-200">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between mb-4">
           <div>
             <h1 className="text-xl font-bold text-gray-800">Встречи сёл</h1>
             <p className="text-sm text-gray-500">События и мероприятия</p>
@@ -108,19 +149,29 @@ function VillageMeetings() {
             </button>
           )}
         </div>
+        <div className="relative">
+          <Search className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+          <input
+            type="text"
+            placeholder="Поиск по селу, организатору..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500"
+          />
+        </div>
       </div>
 
       <div className="p-4 pb-24">
         <h2 className="text-lg font-bold text-gray-800 mb-3">Предстоящие встречи</h2>
         {loading ? (
           <div className="space-y-4">{[...Array(2)].map((_, i) => <div key={i} className="h-48 bg-white rounded-xl animate-pulse border border-gray-100" />)}</div>
-        ) : meetings.length === 0 ? (
+        ) : filteredMeetings.length === 0 ? (
           <div className="text-center py-12">
             <Calendar className="w-12 h-12 text-gray-200 mx-auto mb-3" />
             <p className="text-gray-400">Нет предстоящих встреч</p>
           </div>
         ) : (
-          <div className="space-y-4">{meetings.map(m => <MeetingCard key={m.id} m={m} />)}</div>
+          <div className="space-y-4">{filteredMeetings.map(m => <MeetingCard key={m.id} m={m} />)}</div>
         )}
 
         {!user && (
@@ -132,11 +183,11 @@ function VillageMeetings() {
 
       {/* Add Modal */}
       {showAdd && (
-        <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center modal-overlay" onClick={() => setShowAdd(false)}>
+        <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center modal-overlay" onClick={() => { setShowAdd(false); setEditingId(null); }}>
           <div className="bg-white w-full max-w-md rounded-t-2xl sm:rounded-2xl p-6 animate-slide-up max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-bold text-gray-800">Новая встреча</h2>
-              <button onClick={() => setShowAdd(false)}><X className="w-6 h-6 text-gray-400" /></button>
+              <h2 className="text-xl font-bold text-gray-800">{editingId ? 'Редактировать встречу' : 'Новая встреча'}</h2>
+              <button onClick={() => { setShowAdd(false); setEditingId(null); }}><X className="w-6 h-6 text-gray-400" /></button>
             </div>
             <div className="space-y-4">
               {[
@@ -147,6 +198,7 @@ function VillageMeetings() {
                 ['meeting_date', 'Дата *', '', 'date'],
                 ['fund_purpose', 'Цель сбора (если есть)', 'Реставрация чешме', 'text'],
                 ['fund_goal', 'Сумма сбора (₽)', '500000', 'number'],
+                ['fund_cloudtips_url', 'Ссылка CloudTips', 'https://pay.cloudtips.ru/...', 'url'],
               ].map(([f, l, ph, t]) => (
                 <div key={f}>
                   <label className="block text-sm font-medium text-gray-700 mb-1">{l}</label>
@@ -163,7 +215,7 @@ function VillageMeetings() {
               </div>
               <button onClick={handleAdd} disabled={!form.village || !form.meeting_date || submitting}
                 className="w-full bg-emerald-500 text-white font-semibold py-3 rounded-xl hover:bg-emerald-600 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed">
-                {submitting ? 'Создание...' : 'Создать встречу'}
+                {submitting ? 'Сохранение...' : (editingId ? 'Сохранить изменения' : 'Создать встречу')}
               </button>
             </div>
           </div>
