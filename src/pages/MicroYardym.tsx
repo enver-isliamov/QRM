@@ -1,18 +1,36 @@
 import { useState, useEffect } from 'react';
-import { Heart, Phone, MapPin, AlertCircle, Plus, X, Droplets, Banknote, HelpCircle, MessageCircle, Send, Check, Flag } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Heart, Phone, MapPin, AlertCircle, Plus, X, Droplets, Banknote, HelpCircle, MessageCircle, Send, Check, Flag, Search, Filter } from 'lucide-react';
 import { format } from 'date-fns';
 import { useHelpRequests } from '../hooks/useHelpRequests';
 import { useAuth } from '../hooks/useAuth';
 import { HelpRequestRow, HelpRequestCommentRow, supabase } from '../lib/supabase';
 import { useStore } from '../store/useStore';
 
-type NewReq = { type: 'blood' | 'money' | 'other'; urgency: 'urgent' | 'normal'; title: string; location: string; description: string; contact_phone: string };
+type NewReq = { type: 'blood' | 'money' | 'other'; urgency: 'urgent' | 'normal'; title: string; location: string; description: string; contact_phone: string; cloudtips_url?: string };
 
 function MicroYardym() {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const { featureToggles } = useStore();
-  const { urgent, normal, loading, addRequest, respond, closeRequest } = useHelpRequests();
+  const { requests, loading, addRequest, respond, closeRequest, updateRequest } = useHelpRequests();
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterType, setFilterType] = useState<string>('all');
+  const [filterUrgency, setFilterUrgency] = useState<string>('all');
+
+  const filteredRequests = requests.filter(r => {
+    const matchesSearch = r.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                          r.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          r.location.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesType = filterType === 'all' || r.type === filterType;
+    const matchesUrgency = filterUrgency === 'all' || r.urgency === filterUrgency;
+    return matchesSearch && matchesType && matchesUrgency;
+  });
+
+  const urgent = filteredRequests.filter(r => r.urgency === 'urgent');
+  const normal = filteredRequests.filter(r => r.urgency === 'normal');
   const [showAddModal, setShowAddModal] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [showResponseModal, setShowResponseModal] = useState<string | null>(null);
   const [showCloseModal, setShowCloseModal] = useState<string | null>(null);
   const [showCommentsModal, setShowCommentsModal] = useState<HelpRequestRow | null>(null);
@@ -25,7 +43,7 @@ function MicroYardym() {
   const [toast, setToast] = useState<string | null>(null);
   // IDs обращений на которые текущий юзер уже откликнулся (из БД)
   const [alreadyResponded, setAlreadyResponded] = useState<Set<string>>(new Set());
-  const [newReq, setNewReq] = useState<NewReq>({ type: 'other', urgency: 'normal', title: '', location: '', description: '', contact_phone: '' });
+  const [newReq, setNewReq] = useState<NewReq>({ type: 'other', urgency: 'normal', title: '', location: '', description: '', contact_phone: '', cloudtips_url: '' });
 
   const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(null), 3000); };
 
@@ -80,6 +98,15 @@ function MicroYardym() {
     if (data && !error) {
       setComments(prev => [...prev, data as any]);
       setNewComment('');
+      if (showCommentsModal.author_id && showCommentsModal.author_id !== user.id) {
+        await supabase.from('user_notifications').insert({
+          user_id: showCommentsModal.author_id,
+          type: 'help_response',
+          title: 'Новый комментарий',
+          body: `К вашей просьбе "${showCommentsModal.title}" добавлен новый комментарий.`,
+          link: `/yardym/${showCommentsModal.id}`
+        });
+      }
     }
   };
 
@@ -95,14 +122,21 @@ function MicroYardym() {
     if (!newReq.title || !newReq.location || !newReq.description) return;
     setSubmitting(true);
     const initialStatus = featureToggles.preModeration ? 'pending' : 'active';
-    await addRequest({ ...newReq, status: initialStatus }, user?.id);
+    
+    if (editingId) {
+      await updateRequest(editingId, { ...newReq, status: initialStatus });
+    } else {
+      await addRequest({ ...newReq, status: initialStatus }, user?.id);
+    }
+    
     setSubmitting(false);
     setShowAddModal(false);
-    setNewReq({ type: 'other', urgency: 'normal', title: '', location: '', description: '', contact_phone: '' });
+    setEditingId(null);
+    setNewReq({ type: 'other', urgency: 'normal', title: '', location: '', description: '', contact_phone: '', cloudtips_url: '' });
     if (featureToggles.preModeration) {
-      showToast('Обращение отправлено на модерацию');
+      showToast(editingId ? 'Изменения отправлены на модерацию' : 'Обращение отправлено на модерацию');
     } else {
-      showToast('Обращение опубликовано');
+      showToast(editingId ? 'Обращение обновлено' : 'Обращение опубликовано');
     }
   };
 
@@ -167,8 +201,14 @@ function MicroYardym() {
         <p className="text-sm text-gray-600 mb-3">{request.description}</p>
 
         {request.contact_phone && (
-          <a href={`tel:${request.contact_phone}`} className="flex items-center gap-1 text-emerald-700 mb-3 text-sm hover:underline">
+          <a href={`tel:${request.contact_phone}`} className="flex items-center gap-1 text-emerald-700 mb-1 text-sm hover:underline">
             <Phone className="w-4 h-4" />{request.contact_phone}
+          </a>
+        )}
+
+        {request.cloudtips_url && (
+          <a href={request.cloudtips_url} target="_blank" rel="noreferrer" className="flex items-center gap-1 text-blue-600 mb-3 text-sm hover:underline">
+            <Banknote className="w-4 h-4" />Помочь финансово (CloudTips)
           </a>
         )}
 
@@ -193,11 +233,30 @@ function MicroYardym() {
 
         <div className="flex gap-2">
           {isAuthor ? (
-            <button
-              onClick={() => setShowCloseModal(request.id)}
-              className="w-full font-semibold py-3 rounded-lg transition-colors bg-gray-100 text-gray-600 hover:bg-gray-200">
-              Закрыть обращение
-            </button>
+            <div className="flex gap-2 w-full">
+              <button
+                onClick={() => {
+                  setNewReq({
+                    type: request.type,
+                    urgency: request.urgency,
+                    title: request.title,
+                    location: request.location,
+                    description: request.description,
+                    contact_phone: request.contact_phone || '',
+                    cloudtips_url: request.cloudtips_url || ''
+                  });
+                  setEditingId(request.id);
+                  setShowAddModal(true);
+                }}
+                className="flex-1 font-semibold py-3 rounded-lg transition-colors bg-emerald-100 text-emerald-700 hover:bg-emerald-200">
+                Редактировать
+              </button>
+              <button
+                onClick={() => setShowCloseModal(request.id)}
+                className="flex-1 font-semibold py-3 rounded-lg transition-colors bg-gray-100 text-gray-600 hover:bg-gray-200">
+                Закрыть
+              </button>
+            </div>
           ) : user ? (
             <button
               onClick={() => !hasResponded && setShowResponseModal(request.id)}
@@ -238,7 +297,7 @@ function MicroYardym() {
   return (
     <div className="animate-fade-in min-h-screen bg-gray-50">
       <div className="bg-white px-4 py-4 border-b border-gray-200">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between mb-4">
           <div>
             <h1 className="text-xl font-bold text-gray-800">Микро-Ярдым</h1>
             <p className="text-sm text-gray-500">Взаимопомощь сообщества</p>
@@ -247,6 +306,45 @@ function MicroYardym() {
             className={`flex items-center gap-1 px-3 py-2 rounded-lg text-sm font-medium ${user ? 'bg-emerald-500 text-white' : 'bg-gray-100 text-gray-400'}`}>
             <Plus className="w-4 h-4" />Добавить
           </button>
+        </div>
+        
+        <div className="flex flex-col gap-3">
+          <div className="relative">
+            <Search className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Поиск по селу, описанию..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            />
+          </div>
+          <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+            <div className="flex items-center gap-1 bg-gray-50 border border-gray-200 rounded-lg px-2 py-1 flex-shrink-0">
+              <Filter className="w-4 h-4 text-gray-500" />
+              <select 
+                value={filterType} 
+                onChange={(e) => setFilterType(e.target.value)}
+                className="bg-transparent text-sm text-gray-700 focus:outline-none"
+              >
+                <option value="all">Все типы</option>
+                <option value="blood">Кровь</option>
+                <option value="money">Сбор средств</option>
+                <option value="other">Другое</option>
+              </select>
+            </div>
+            <div className="flex items-center gap-1 bg-gray-50 border border-gray-200 rounded-lg px-2 py-1 flex-shrink-0">
+              <select 
+                value={filterUrgency} 
+                onChange={(e) => setFilterUrgency(e.target.value)}
+                className="bg-transparent text-sm text-gray-700 focus:outline-none"
+              >
+                <option value="all">Любая срочность</option>
+                <option value="urgent">Срочные</option>
+                <option value="normal">Обычные</option>
+              </select>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -282,8 +380,8 @@ function MicroYardym() {
         <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center modal-overlay" onClick={() => setShowAddModal(false)}>
           <div className="bg-white w-full max-w-md rounded-t-2xl sm:rounded-2xl p-6 animate-slide-up max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-bold text-gray-800">Новое обращение</h2>
-              <button onClick={() => setShowAddModal(false)}><X className="w-6 h-6 text-gray-400" /></button>
+              <h2 className="text-xl font-bold text-gray-800">{editingId ? 'Редактировать' : 'Новое обращение'}</h2>
+              <button onClick={() => { setShowAddModal(false); setEditingId(null); setNewReq({ type: 'other', urgency: 'normal', title: '', location: '', description: '', contact_phone: '', cloudtips_url: '' }); }}><X className="w-6 h-6 text-gray-400" /></button>
             </div>
             <div className="space-y-4">
               <div>
@@ -306,7 +404,7 @@ function MicroYardym() {
                   ))}
                 </div>
               </div>
-              {[['title','Заголовок','Нужна кровь 4+','text'],['location','Место','Симферополь, адрес','text'],['contact_phone','Телефон','+7 (978)...','tel']].map(([f,l,ph,t]) => (
+              {[['title','Заголовок','Нужна кровь 4+','text'],['location','Место','Симферополь, адрес','text'],['contact_phone','Телефон','+7 (978)...','tel'],['cloudtips_url','Ссылка CloudTips','https://pay.cloudtips.ru/...','url']].map(([f,l,ph,t]) => (
                 <div key={f}>
                   <label className="block text-sm font-medium text-gray-700 mb-1">{l}</label>
                   <input type={t} value={(newReq as any)[f]} placeholder={ph}
@@ -385,15 +483,18 @@ function MicroYardym() {
               ) : (
                 comments.map(comment => (
                   <div key={comment.id} className={`flex gap-3 ${comment.author_id === user?.id ? 'flex-row-reverse' : ''}`}>
-                    <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0 overflow-hidden">
+                    <button 
+                      onClick={() => navigate(`/user/${comment.author_id}`)}
+                      className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0 overflow-hidden hover:opacity-80 transition-opacity"
+                    >
                       {comment.author?.avatar_url ? (
-                        <img src={comment.author.avatar_url} alt="" className="w-full h-full object-cover" />
+                        <img src={comment.author.avatar_url} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                       ) : (
                         <span className="text-emerald-700 font-medium text-sm">
                           {(comment.author?.name || 'U')[0].toUpperCase()}
                         </span>
                       )}
-                    </div>
+                    </button>
                     <div className={`max-w-[80%] rounded-2xl px-4 py-2 relative group ${
                       comment.author_id === user?.id 
                         ? 'bg-emerald-500 text-white rounded-tr-sm' 
@@ -401,7 +502,12 @@ function MicroYardym() {
                     }`}>
                       {comment.author_id !== user?.id && (
                         <div className="flex items-center justify-between mb-1">
-                          <p className="text-xs font-medium text-emerald-600">{comment.author?.name || 'Пользователь'}</p>
+                          <button 
+                            onClick={() => navigate(`/user/${comment.author_id}`)}
+                            className="text-xs font-medium text-emerald-600 hover:underline"
+                          >
+                            {comment.author?.name || 'Пользователь'}
+                          </button>
                           <button 
                             onClick={() => setShowReportModal({ type: 'comment', id: comment.id })}
                             className="text-gray-300 hover:text-rose-500 transition-colors opacity-0 group-hover:opacity-100">

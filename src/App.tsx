@@ -13,6 +13,7 @@ import MeetingEdit from './pages/MeetingEdit'
 import Notifications from './pages/Notifications'
 import Sections from './pages/Sections'
 import Profile from './pages/Profile'
+import PublicProfile from './pages/PublicProfile'
 import Login from './pages/Login'
 import AuthCallback from './pages/AuthCallback'
 import Support from './pages/Support'
@@ -53,6 +54,7 @@ export default function App() {
           <Route path="sections"          element={<Sections />} />
           <Route path="support"           element={<Support />} />
           <Route path="profile"           element={<Profile />} />
+          <Route path="user/:id"          element={<PublicProfile />} />
           <Route path="admin"             element={
             <ProtectedRoute requireStaff><Admin /></ProtectedRoute>
           } />
