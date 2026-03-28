@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Session, User } from '@supabase/supabase-js'
 import { supabase, Profile } from '../lib/supabase'
-import i18n from '../i18n'
 
 export function useAuth() {
   const [session, setSession] = useState<Session | null>(null)
@@ -11,12 +10,7 @@ export function useAuth() {
 
   const fetchProfile = async (userId: string) => {
     const { data } = await supabase.from('profiles').select('*').eq('id', userId).single()
-    if (data) {
-      setProfile(data as Profile)
-      if (data.language && data.language !== i18n.language) {
-        i18n.changeLanguage(data.language)
-      }
-    }
+    if (data) setProfile(data as Profile)
     setLoading(false)
   }
 

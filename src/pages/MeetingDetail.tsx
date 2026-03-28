@@ -100,22 +100,11 @@ function MeetingDetail() {
             </div>
           </div>
           {meeting.location && (
-            <div className="flex items-start gap-3">
+            <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-rose-100 rounded-lg flex items-center justify-center flex-shrink-0">
                 <MapPin className="w-5 h-5 text-rose-500" />
               </div>
-              <div className="flex-1">
-                <p className="text-gray-700">{meeting.location}</p>
-                <a
-                  href={`https://yandex.ru/maps/?text=${encodeURIComponent(meeting.location)}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-emerald-600 text-sm font-medium mt-1 inline-flex items-center gap-1 hover:underline"
-                >
-                  Открыть в Яндекс Картах
-                  <ExternalLink className="w-3 h-3" />
-                </a>
-              </div>
+              <p className="text-gray-700">{meeting.location}</p>
             </div>
           )}
         </div>
