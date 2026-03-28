@@ -21,6 +21,8 @@ import AuthCallback from './pages/AuthCallback'
 import Support from './pages/Support'
 import Admin from './pages/Admin'
 import YandexMetrika from './components/YandexMetrika'
+import ErrorBoundary from './components/ErrorBoundary'
+import { Toaster } from 'sonner'
 import './index.css'
 
 function ProtectedRoute({ children, requireStaff = false }: { children: React.ReactNode; requireStaff?: boolean }) {
@@ -50,37 +52,40 @@ export default function App() {
   }, [])
 
   return (
-    <Router>
-      <YandexMetrika />
-      {isOffline && (
-        <div className="bg-rose-500 text-white px-4 py-2 flex items-center justify-center gap-2 text-sm font-medium sticky top-0 z-50">
-          <WifiOff className="w-4 h-4" />
-          Нет подключения к интернету
-        </div>
-      )}
-      <Routes>
-        <Route path="/login"         element={<Login />} />
-        <Route path="/auth/callback" element={<AuthCallback />} />
-        <Route path="/" element={<Layout />}>
-          <Route index                    element={<Home />} />
-          <Route path="prayer-times"      element={<PrayerTimes />} />
-          <Route path="ethno-calendar"    element={<EthnoCalendar />} />
-          <Route path="rituals"           element={<Rituals />} />
-          <Route path="rituals/:id"       element={<RitualDetail />} />
-          <Route path="micro-yardym"      element={<MicroYardym />} />
-          <Route path="village-meetings"  element={<VillageMeetings />} />
-          <Route path="meetings/:id"      element={<MeetingDetail />} />
-          <Route path="meetings/:id/edit" element={<MeetingEdit />} />
-          <Route path="notifications"     element={<Notifications />} />
-          <Route path="sections"          element={<Sections />} />
-          <Route path="support"           element={<Support />} />
-          <Route path="profile"           element={<Profile />} />
-          <Route path="user/:id"          element={<PublicProfile />} />
-          <Route path="admin"             element={
-            <ProtectedRoute requireStaff><Admin /></ProtectedRoute>
-          } />
-        </Route>
-      </Routes>
-    </Router>
+    <ErrorBoundary>
+      <Toaster position="top-center" richColors />
+      <Router>
+        <YandexMetrika />
+        {isOffline && (
+          <div className="bg-rose-500 text-white px-4 py-2 flex items-center justify-center gap-2 text-sm font-medium sticky top-0 z-50">
+            <WifiOff className="w-4 h-4" />
+            Нет подключения к интернету
+          </div>
+        )}
+        <Routes>
+          <Route path="/login"         element={<Login />} />
+          <Route path="/auth/callback" element={<AuthCallback />} />
+          <Route path="/" element={<Layout />}>
+            <Route index                    element={<Home />} />
+            <Route path="prayer-times"      element={<PrayerTimes />} />
+            <Route path="ethno-calendar"    element={<EthnoCalendar />} />
+            <Route path="rituals"           element={<Rituals />} />
+            <Route path="rituals/:id"       element={<RitualDetail />} />
+            <Route path="micro-yardym"      element={<MicroYardym />} />
+            <Route path="village-meetings"  element={<VillageMeetings />} />
+            <Route path="meetings/:id"      element={<MeetingDetail />} />
+            <Route path="meetings/:id/edit" element={<MeetingEdit />} />
+            <Route path="notifications"     element={<Notifications />} />
+            <Route path="sections"          element={<Sections />} />
+            <Route path="support"           element={<Support />} />
+            <Route path="profile"           element={<Profile />} />
+            <Route path="user/:id"          element={<PublicProfile />} />
+            <Route path="admin"             element={
+              <ProtectedRoute requireStaff><Admin /></ProtectedRoute>
+            } />
+          </Route>
+        </Routes>
+      </Router>
+    </ErrorBoundary>
   )
 }

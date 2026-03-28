@@ -1,11 +1,15 @@
 import { useParams, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { ChevronLeft, BookOpen } from 'lucide-react';
 import { useRitualDetail } from '../hooks/useRituals';
 
 function RitualDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { t, i18n } = useTranslation();
   const { ritual, steps, loading } = useRitualDetail(id ?? '');
+
+  const isCrh = i18n.language === 'crh';
 
   if (loading) {
     return (
@@ -23,9 +27,9 @@ function RitualDetail() {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <h2 className="text-xl font-semibold text-gray-600">Обряд не найден</h2>
+          <h2 className="text-xl font-semibold text-gray-600">{t('rituals.not_found')}</h2>
           <button onClick={() => navigate('/rituals')} className="mt-4 text-emerald-600 font-medium">
-            Вернуться к списку
+            {t('rituals.back_to_list')}
           </button>
         </div>
       </div>
@@ -37,10 +41,16 @@ function RitualDetail() {
       <div className="bg-white px-4 py-4 border-b border-gray-200">
         <button onClick={() => navigate('/rituals')} className="flex items-center gap-2 text-gray-600 mb-2">
           <ChevronLeft className="w-5 h-5" />
-          <span>Назад</span>
+          <span>{t('common.back')}</span>
         </button>
-        <h1 className="text-xl font-bold text-gray-800">{ritual.title}</h1>
-        {ritual.subtitle && <p className="text-sm text-gray-500">{ritual.subtitle}</p>}
+        <h1 className="text-xl font-bold text-gray-800">
+          {isCrh && ritual.title_crh ? ritual.title_crh : ritual.title}
+        </h1>
+        {(ritual.subtitle || ritual.subtitle_crh) && (
+          <p className="text-sm text-gray-500">
+            {isCrh && ritual.subtitle_crh ? ritual.subtitle_crh : ritual.subtitle}
+          </p>
+        )}
       </div>
 
       <div className="p-4 pb-20">
@@ -52,9 +62,12 @@ function RitualDetail() {
                   {index + 1}
                 </div>
                 <div className="flex-1">
-                  <h3 className="font-semibold text-gray-800 mb-2">{step.title}</h3>
-                  {step.description && <p className="text-sm text-gray-600 mb-2">{step.description}</p>}
-                  {step.description_crh && <p className="text-sm text-gray-500 italic">{step.description_crh}</p>}
+                  <h3 className="font-semibold text-gray-800 mb-2">
+                    {isCrh && step.title_crh ? step.title_crh : step.title}
+                  </h3>
+                  {step.description && !isCrh && <p className="text-sm text-gray-600 mb-2">{step.description}</p>}
+                  {step.description_crh && isCrh && <p className="text-sm text-gray-600 mb-2">{step.description_crh}</p>}
+                  {step.description && isCrh && !step.description_crh && <p className="text-sm text-gray-600 mb-2">{step.description}</p>}
                 </div>
               </div>
             </div>
@@ -65,10 +78,9 @@ function RitualDetail() {
           <div className="flex items-start gap-3">
             <BookOpen className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
             <div>
-              <h3 className="font-semibold text-amber-800 mb-1">Примечание</h3>
+              <h3 className="font-semibold text-amber-800 mb-1">{t('rituals.note_title')}</h3>
               <p className="text-sm text-amber-700">
-                Традиции могут немного отличаться в разных регионах и семьях.
-                Рекомендуется консультироваться со старейшинами и религиозными деятелями.
+                {t('rituals.note_desc')}
               </p>
             </div>
           </div>

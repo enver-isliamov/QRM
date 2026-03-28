@@ -12,6 +12,16 @@ export const prayerTimes2026: Record<string, DailyPrayers> = {
   '2026-03-29': { date: '2026-03-29', fajr: '05:01', sunrise: '06:18', dhuhr: '12:52', asr: '16:23', maghrib: '19:17', isha: '20:35' },
   '2026-03-30': { date: '2026-03-30', fajr: '04:59', sunrise: '06:16', dhuhr: '12:52', asr: '16:24', maghrib: '19:18', isha: '20:37' },
   '2026-03-31': { date: '2026-03-31', fajr: '04:57', sunrise: '06:14', dhuhr: '12:52', asr: '16:25', maghrib: '19:19', isha: '20:38' },
+  '2026-04-01': { date: '2026-04-01', fajr: '04:55', sunrise: '06:12', dhuhr: '12:51', asr: '16:26', maghrib: '19:21', isha: '20:40' },
+  '2026-04-02': { date: '2026-04-02', fajr: '04:53', sunrise: '06:10', dhuhr: '12:51', asr: '16:27', maghrib: '19:22', isha: '20:41' },
+  '2026-04-03': { date: '2026-04-03', fajr: '04:51', sunrise: '06:08', dhuhr: '12:51', asr: '16:28', maghrib: '19:23', isha: '20:43' },
+  '2026-04-04': { date: '2026-04-04', fajr: '04:49', sunrise: '06:06', dhuhr: '12:50', asr: '16:29', maghrib: '19:25', isha: '20:44' },
+  '2026-04-05': { date: '2026-04-05', fajr: '04:47', sunrise: '06:04', dhuhr: '12:50', asr: '16:30', maghrib: '19:26', isha: '20:46' },
+  '2026-04-06': { date: '2026-04-06', fajr: '04:45', sunrise: '06:02', dhuhr: '12:50', asr: '16:31', maghrib: '19:27', isha: '20:47' },
+  '2026-04-07': { date: '2026-04-07', fajr: '04:43', sunrise: '06:00', dhuhr: '12:50', asr: '16:32', maghrib: '19:29', isha: '20:49' },
+  '2026-04-08': { date: '2026-04-08', fajr: '04:41', sunrise: '05:58', dhuhr: '12:49', asr: '16:33', maghrib: '19:30', isha: '20:50' },
+  '2026-04-09': { date: '2026-04-09', fajr: '04:39', sunrise: '05:56', dhuhr: '12:49', asr: '16:34', maghrib: '19:31', isha: '20:52' },
+  '2026-04-10': { date: '2026-04-10', fajr: '04:37', sunrise: '05:54', dhuhr: '12:49', asr: '16:35', maghrib: '19:33', isha: '20:53' },
 };
 
 export function getTodayPrayers(): DailyPrayers | null {

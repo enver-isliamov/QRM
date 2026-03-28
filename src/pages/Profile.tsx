@@ -1,9 +1,29 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { User, Settings, Bell, Shield, LogOut, ChevronRight, Globe, Heart, Star, Activity } from 'lucide-react';
+import { User, Settings, Bell, Shield, LogOut, ChevronRight, Globe, Heart, Star, Activity, Award, Camera } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../lib/supabase';
 import { useTranslation } from 'react-i18next';
+import { Skeleton } from '../components/ui/Skeleton';
+
+const ICON_MAP: Record<string, any> = {
+  Shield,
+  Heart,
+  Star,
+  Activity,
+  Award
+};
+
+const BADGE_COLORS: Record<string, string> = {
+  trusted: 'text-emerald-500 bg-emerald-50 border-emerald-200',
+  helper: 'text-rose-500 bg-rose-50 border-rose-200',
+  activist: 'text-amber-500 bg-amber-50 border-amber-200',
+  veteran: 'text-purple-500 bg-purple-50 border-purple-200',
+  helper_1: 'text-rose-500 bg-rose-50 border-rose-200',
+  helper_5: 'text-emerald-500 bg-emerald-50 border-emerald-200',
+  organizer: 'text-amber-500 bg-amber-50 border-amber-200',
+  active: 'text-blue-500 bg-blue-50 border-blue-200',
+};
 
 function Profile() {
   const navigate = useNavigate();
@@ -14,6 +34,8 @@ function Profile() {
   const [showSecurity, setShowSecurity] = useState(false);
   const { i18n } = useTranslation();
   const language = i18n.language as 'ru' | 'crh';
+  const [loading, setLoading] = useState(true);
+  const [uploading, setUploading] = useState(false);
 
   const setLanguageState = async (lang: 'ru' | 'crh') => {
     i18n.changeLanguage(lang);
@@ -72,43 +94,54 @@ function Profile() {
         const calculatedTrustScore = 100 + (rCount * 10) + (reqCount * 5) + (mCount * 20);
 
         // Determine Badges
-        const earnedBadges = [];
+        let finalBadges = [];
         
-        if (rCount >= 1) {
-          earnedBadges.push({
-            id: 'helper_1',
-            name: 'Первый отклик',
-            icon: Heart,
-            color: 'text-rose-500 bg-rose-50 border-rose-200',
-            description: 'Откликнулся на просьбу о помощи'
-          });
-        }
-        if (rCount >= 5) {
-          earnedBadges.push({
-            id: 'helper_5',
-            name: 'Надежный помощник',
-            icon: Shield,
-            color: 'text-emerald-500 bg-emerald-50 border-emerald-200',
-            description: 'Помог 5 раз'
-          });
-        }
-        if (mCount >= 1) {
-          earnedBadges.push({
-            id: 'organizer',
-            name: 'Организатор',
-            icon: Star,
-            color: 'text-amber-500 bg-amber-50 border-amber-200',
-            description: 'Организовал встречу'
-          });
-        }
-        if (reqCount >= 1) {
-          earnedBadges.push({
-            id: 'active',
-            name: 'Активный участник',
-            icon: Activity,
-            color: 'text-blue-500 bg-blue-50 border-blue-200',
-            description: 'Создал обращение'
-          });
+        if (profile?.badges && Array.isArray(profile.badges) && profile.badges.length > 0) {
+          finalBadges = profile.badges.map((b: any) => ({
+            id: b.id,
+            name: b.name,
+            icon: ICON_MAP[b.icon] || Shield,
+            color: BADGE_COLORS[b.id] || 'text-gray-500 bg-gray-50 border-gray-200',
+            description: b.desc || b.description
+          }));
+        } else {
+          // Fallback to client-side calculation if no badges in DB
+          if (rCount >= 1) {
+            finalBadges.push({
+              id: 'helper_1',
+              name: 'Первый отклик',
+              icon: Heart,
+              color: BADGE_COLORS['helper_1'],
+              description: 'Откликнулся на просьбу о помощи'
+            });
+          }
+          if (rCount >= 5) {
+            finalBadges.push({
+              id: 'helper_5',
+              name: 'Надежный помощник',
+              icon: Shield,
+              color: BADGE_COLORS['helper_5'],
+              description: 'Помог 5 раз'
+            });
+          }
+          if (mCount >= 1) {
+            finalBadges.push({
+              id: 'organizer',
+              name: 'Организатор',
+              icon: Star,
+              color: BADGE_COLORS['organizer'],
+              description: 'Организовал встречу'
+            });
+          }
+          if (reqCount >= 1) {
+            finalBadges.push({
+              id: 'active',
+              name: 'Активный участник',
+              icon: Activity,
+              color: BADGE_COLORS['active'],
+              description: 'Создал обращение'
+            });
+          }
         }
 
         setStats({
@@ -116,10 +149,12 @@ function Profile() {
           helpRequests: reqCount,
           meetingsOrganized: mCount,
           trustScore: profile?.trust_score || calculatedTrustScore,
-          badges: earnedBadges
+          badges: finalBadges
         });
+        setLoading(false);
       } catch (error) {
         console.error('Error fetching stats:', error);
+        setLoading(false);
       }
     };
 
@@ -156,6 +191,41 @@ function Profile() {
     navigate('/');
   };
 
+  const handleAvatarUpload = async (file: File) => {
+    if (!user) return;
+    setUploading(true);
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${user.id}-${Math.random()}.${fileExt}`;
+      const filePath = `avatars/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(filePath);
+
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ avatar_url: publicUrl })
+        .eq('id', user.id);
+
+      if (updateError) throw updateError;
+      
+      // Profile in useAuth should update automatically via realtime or we can force refresh if needed
+      // For now, we rely on the fact that useAuth might be listening or the user will see it on next load
+    } catch (error) {
+      console.error('Error uploading avatar:', error);
+      alert('Ошибка при загрузке аватара');
+    } finally {
+      setUploading(false);
+    }
+  };
+
   return (
     <div className="animate-fade-in min-h-screen bg-gray-50">
       <div className="bg-white px-4 py-4 border-b border-gray-200">
@@ -166,16 +236,34 @@ function Profile() {
       <div className="p-4">
         <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
           <div className="flex items-center gap-4">
-            <div className="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center overflow-hidden">
-              {profile.avatar_url ? (
-                <img src={profile.avatar_url} alt={profile.name} className="w-full h-full object-cover" />
-              ) : (
-                <User className="w-10 h-10 text-emerald-600" />
-              )}
+            <div className="relative group">
+              <div className="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center overflow-hidden">
+                {loading ? <Skeleton className="w-full h-full" /> : profile.avatar_url ? (
+                  <img src={profile.avatar_url} alt={profile.name} className="w-full h-full object-cover" />
+                ) : (
+                  <User className="w-10 h-10 text-emerald-600" />
+                )}
+              </div>
+              <label className="absolute bottom-0 right-0 w-7 h-7 bg-white border border-gray-200 rounded-full flex items-center justify-center cursor-pointer shadow-sm hover:bg-gray-50 transition-colors">
+                <Camera className="w-4 h-4 text-gray-500" />
+                <input type="file" className="hidden" accept="image/*" onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) handleAvatarUpload(file);
+                }} disabled={uploading} />
+              </label>
             </div>
             <div className="flex-1">
-              <h2 className="text-xl font-bold text-gray-800">{profile.name || 'Пользователь'}</h2>
-              <p className="text-gray-500 text-sm">{user.email}</p>
+              {loading ? (
+                <div className="space-y-2">
+                  <Skeleton className="h-6 w-32" />
+                  <Skeleton className="h-4 w-48" />
+                </div>
+              ) : (
+                <>
+                  <h2 className="text-xl font-bold text-gray-800">{profile.name || 'Пользователь'}</h2>
+                  <p className="text-gray-500 text-sm">{user.email}</p>
+                </>
+              )}
               <span className={`inline-block mt-2 text-xs px-2 py-1 rounded ${
                 profile.role === 'admin' ? 'bg-purple-100 text-purple-700' : 'bg-emerald-100 text-emerald-700'
               }`}>
@@ -187,11 +275,11 @@ function Profile() {
           <div className="mt-4 pt-4 border-t border-gray-100 space-y-2">
             <div className="flex items-center justify-between text-sm">
               <span className="text-gray-500">Способ входа</span>
-              <span className="text-gray-700 capitalize">{profile.provider}</span>
+              {loading ? <Skeleton className="h-4 w-16" /> : <span className="text-gray-700 capitalize">{profile.provider}</span>}
             </div>
             <div className="flex items-center justify-between text-sm">
               <span className="text-gray-500">В сообществе с</span>
-              <span className="text-gray-700">{new Date(profile.created_at).toLocaleDateString('ru-RU')}</span>
+              {loading ? <Skeleton className="h-4 w-24" /> : <span className="text-gray-700">{new Date(profile.created_at).toLocaleDateString('ru-RU')}</span>}
             </div>
           </div>
         </div>
@@ -202,28 +290,33 @@ function Profile() {
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
           <div className="flex items-center justify-between mb-4">
             <h3 className="font-bold text-gray-800">Рейтинг доверия</h3>
-            <div className="flex items-center gap-1 bg-emerald-50 text-emerald-700 px-2 py-1 rounded-lg font-bold">
-              <Shield className="w-4 h-4" />
-              {stats.trustScore}
-            </div>
+            {loading ? <Skeleton className="h-6 w-12" /> : (
+              <div className="flex items-center gap-1 bg-emerald-50 text-emerald-700 px-2 py-1 rounded-lg font-bold">
+                <Shield className="w-4 h-4" />
+                {stats.trustScore}
+              </div>
+            )}
           </div>
           
           <div className="grid grid-cols-3 gap-3 mb-4">
-            <div className="bg-gray-50 rounded-lg p-3 text-center">
-              <div className="text-xl font-bold text-gray-800">{stats.helpResponses}</div>
-              <div className="text-xs text-gray-500">Откликов</div>
-            </div>
-            <div className="bg-gray-50 rounded-lg p-3 text-center">
-              <div className="text-xl font-bold text-gray-800">{stats.helpRequests}</div>
-              <div className="text-xs text-gray-500">Обращений</div>
-            </div>
-            <div className="bg-gray-50 rounded-lg p-3 text-center">
-              <div className="text-xl font-bold text-gray-800">{stats.meetingsOrganized}</div>
-              <div className="text-xs text-gray-500">Встреч</div>
-            </div>
+            {[
+              { label: 'Откликов', value: stats.helpResponses },
+              { label: 'Обращений', value: stats.helpRequests },
+              { label: 'Встреч', value: stats.meetingsOrganized }
+            ].map((s, i) => (
+              <div key={i} className="bg-gray-50 rounded-lg p-3 text-center">
+                {loading ? <Skeleton className="h-6 w-8 mx-auto mb-1" /> : <div className="text-xl font-bold text-gray-800">{s.value}</div>}
+                <div className="text-xs text-gray-500">{s.label}</div>
+              </div>
+            ))}
           </div>
 
-          {stats.badges.length > 0 && (
+          {loading ? (
+            <div className="flex gap-2">
+              <Skeleton className="h-8 w-24 rounded-lg" />
+              <Skeleton className="h-8 w-24 rounded-lg" />
+            </div>
+          ) : stats.badges.length > 0 && (
             <div>
               <h3 className="font-bold text-gray-800 mb-3 text-sm">Достижения</h3>
               <div className="flex flex-wrap gap-2">

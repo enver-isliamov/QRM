@@ -29,6 +29,18 @@ function MeetingDetail() {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const getGoogleCalendarUrl = () => {
+    if (!meeting) return '';
+    const start = new Date(meeting.meeting_date);
+    if (meeting.meeting_time) {
+      const [h, m] = (meeting.meeting_time as string).split(':');
+      start.setHours(+h, +m);
+    }
+    const end = new Date(start.getTime() + 2 * 60 * 60 * 1000); // +2 hours
+    const fmt = (d: Date) => d.toISOString().replace(/-|:|\.\d\d\d/g, '');
+    return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(meeting.village)}&dates=${fmt(start)}/${fmt(end)}&details=${encodeURIComponent(meeting.description || '')}&location=${encodeURIComponent(meeting.location || '')}`;
+  };
+
   const handleSaveFund = async () => {
     if (!id) return;
     await updateMeeting(id, {
@@ -63,6 +75,17 @@ function MeetingDetail() {
   const progress = meeting.fund_progress ?? (meeting.fund_goal && meeting.fund_current != null
     ? Math.round((meeting.fund_current / meeting.fund_goal) * 100) : null);
 
+  const daysUntil = () => {
+    if (!meeting) return null;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const mDate = new Date(meeting.meeting_date);
+    mDate.setHours(0, 0, 0, 0);
+    const diff = mDate.getTime() - today.getTime();
+    return Math.ceil(diff / (1000 * 60 * 60 * 24));
+  };
+  const days = daysUntil();
+
   return (
     <div className="animate-fade-in min-h-screen bg-gray-50">
       {/* Header */}
@@ -74,6 +97,16 @@ function MeetingDetail() {
           <div>
             <h1 className="text-xl font-bold text-gray-800">{meeting.village}</h1>
             <p className="text-sm text-gray-500">Организатор: {meeting.organizer}</p>
+            {days !== null && days > 0 && (
+              <div className="mt-2 inline-block bg-emerald-50 text-emerald-700 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border border-emerald-100">
+                До встречи {days} {days === 1 ? 'день' : (days > 1 && days < 5) ? 'дня' : 'дней'}
+              </div>
+            )}
+            {days === 0 && (
+              <div className="mt-2 inline-block bg-rose-50 text-rose-700 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border border-rose-100 animate-pulse">
+                Встреча сегодня!
+              </div>
+            )}
           </div>
           {canEdit && (
             <button onClick={() => navigate(`/meetings/${id}/edit`)}
@@ -97,6 +130,15 @@ function MeetingDetail() {
                 {meeting.meeting_time && <span className="text-emerald-600 ml-2">в {(meeting.meeting_time as string).slice(0,5)}</span>}
               </p>
               {!meeting.meeting_time && <p className="text-sm text-amber-600">Точное время уточняется</p>}
+              <a 
+                href={getGoogleCalendarUrl()} 
+                target="_blank" 
+                rel="noreferrer"
+                className="mt-2 inline-flex items-center gap-1.5 text-xs font-medium text-emerald-600 hover:underline"
+              >
+                <Calendar className="w-3 h-3" />
+                Добавить в Google Календарь
+              </a>
             </div>
           </div>
           {meeting.location && (
@@ -105,12 +147,22 @@ function MeetingDetail() {
                 <MapPin className="w-5 h-5 text-rose-500" />
               </div>
               <div className="flex-1">
-                <p className="text-gray-700">{meeting.location}</p>
+                <p className="text-gray-700 font-medium">{meeting.location}</p>
+                <div className="mt-3 rounded-xl overflow-hidden border border-gray-100 h-[180px] relative bg-gray-100">
+                  <iframe 
+                    src={`https://yandex.ru/map-widget/v1/?text=${encodeURIComponent(meeting.location)}&z=14`}
+                    width="100%" 
+                    height="100%" 
+                    frameBorder="0"
+                    allowFullScreen={true}
+                    className="absolute inset-0"
+                  ></iframe>
+                </div>
                 <a
                   href={`https://yandex.ru/maps/?text=${encodeURIComponent(meeting.location)}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-emerald-600 text-sm font-medium mt-1 inline-flex items-center gap-1 hover:underline"
+                  className="text-emerald-600 text-sm font-medium mt-3 inline-flex items-center gap-1 hover:underline"
                 >
                   Открыть в Яндекс Картах
                   <ExternalLink className="w-3 h-3" />

@@ -1,15 +1,19 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { Heart, Phone, MapPin, AlertCircle, Plus, X, Droplets, Banknote, HelpCircle, MessageCircle, Send, Check, Flag, Search, Filter } from 'lucide-react';
 import { format } from 'date-fns';
+import { toast } from 'sonner';
 import { useHelpRequests } from '../hooks/useHelpRequests';
 import { useAuth } from '../hooks/useAuth';
 import { HelpRequestRow, HelpRequestCommentRow, supabase } from '../lib/supabase';
 import { useStore } from '../store/useStore';
+import { Skeleton } from '../components/ui/Skeleton';
 
 type NewReq = { type: 'blood' | 'money' | 'other'; urgency: 'urgent' | 'normal'; title: string; location: string; description: string; contact_phone: string; cloudtips_url?: string };
 
 function MicroYardym() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { user } = useAuth();
   const { featureToggles } = useStore();
@@ -30,6 +34,7 @@ function MicroYardym() {
   const urgent = filteredRequests.filter(r => r.urgency === 'urgent');
   const normal = filteredRequests.filter(r => r.urgency === 'normal');
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [showResponseModal, setShowResponseModal] = useState<string | null>(null);
   const [showCloseModal, setShowCloseModal] = useState<string | null>(null);
@@ -40,12 +45,9 @@ function MicroYardym() {
   const [newComment, setNewComment] = useState('');
   const [loadingComments, setLoadingComments] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [toast, setToast] = useState<string | null>(null);
   // IDs обращений на которые текущий юзер уже откликнулся (из БД)
   const [alreadyResponded, setAlreadyResponded] = useState<Set<string>>(new Set());
   const [newReq, setNewReq] = useState<NewReq>({ type: 'other', urgency: 'normal', title: '', location: '', description: '', contact_phone: '', cloudtips_url: '' });
-
-  const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(null), 3000); };
 
   // Загружаем с БД: на что уже откликнулся пользователь
   useEffect(() => {
@@ -102,8 +104,8 @@ function MicroYardym() {
         await supabase.from('user_notifications').insert({
           user_id: showCommentsModal.author_id,
           type: 'help_response',
-          title: 'Новый комментарий',
-          body: `К вашей просьбе "${showCommentsModal.title}" добавлен новый комментарий.`,
+          title: t('yardym.new_comment_notification'),
+          body: `${t('yardym.new_comment_notification')}: "${showCommentsModal.title}"`,
           link: `/yardym/${showCommentsModal.id}`
         });
       }
@@ -124,19 +126,30 @@ function MicroYardym() {
     const initialStatus = featureToggles.preModeration ? 'pending' : 'active';
     
     if (editingId) {
-      await updateRequest(editingId, { ...newReq, status: initialStatus });
+      const { error } = await updateRequest(editingId, { ...newReq, status: initialStatus });
+      if (error) {
+        toast.error(error.message);
+        setSubmitting(false);
+        return;
+      }
     } else {
-      await addRequest({ ...newReq, status: initialStatus }, user?.id);
+      const { error } = await addRequest({ ...newReq, status: initialStatus }, user?.id);
+      if (error) {
+        toast.error(error.message);
+        setSubmitting(false);
+        return;
+      }
     }
     
     setSubmitting(false);
     setShowAddModal(false);
     setEditingId(null);
     setNewReq({ type: 'other', urgency: 'normal', title: '', location: '', description: '', contact_phone: '', cloudtips_url: '' });
+    
     if (featureToggles.preModeration) {
-      showToast(editingId ? 'Изменения отправлены на модерацию' : 'Обращение отправлено на модерацию');
+      toast.success(editingId ? t('yardym.moderation_edit_success') : t('yardym.moderation_success'));
     } else {
-      showToast(editingId ? 'Обращение обновлено' : 'Обращение опубликовано');
+      setShowSuccessModal(true);
     }
   };
 
@@ -165,11 +178,11 @@ function MicroYardym() {
     });
     setSubmitting(false);
     if (!error) {
-      showToast('Жалоба отправлена');
+      toast.success(t('yardym.report_success'));
       setShowReportModal(null);
       setReportReason('');
     } else {
-      showToast('Ошибка при отправке жалобы');
+      toast.error(t('yardym.report_error'));
     }
   };
 
@@ -208,13 +221,13 @@ function MicroYardym() {
 
         {request.cloudtips_url && (
           <a href={request.cloudtips_url} target="_blank" rel="noreferrer" className="flex items-center gap-1 text-blue-600 mb-3 text-sm hover:underline">
-            <Banknote className="w-4 h-4" />Помочь финансово (CloudTips)
+            <Banknote className="w-4 h-4" />{t('yardym.financial_help')}
           </a>
         )}
 
         {!isUrgent && (
           <div className="flex items-center justify-between mb-2">
-            <p className="text-xs text-gray-400">Откликов: {request.responses_count ?? 0}</p>
+            <p className="text-xs text-gray-400">{t('yardym.responses_count', { count: request.responses_count ?? 0 })}</p>
             <div className="flex items-center gap-2">
               <button 
                 onClick={() => setShowReportModal({ type: 'help_request', id: request.id })}
@@ -225,7 +238,7 @@ function MicroYardym() {
                 onClick={() => setShowCommentsModal(request)}
                 className="flex items-center gap-1 text-xs text-emerald-600 hover:text-emerald-700 bg-emerald-50 px-2 py-1 rounded-lg transition-colors">
                 <MessageCircle className="w-3.5 h-3.5" />
-                Обсуждение
+                {t('yardym.discussion')}
               </button>
             </div>
           </div>
@@ -249,12 +262,12 @@ function MicroYardym() {
                   setShowAddModal(true);
                 }}
                 className="flex-1 font-semibold py-3 rounded-lg transition-colors bg-emerald-100 text-emerald-700 hover:bg-emerald-200">
-                Редактировать
+                {t('yardym.edit')}
               </button>
               <button
                 onClick={() => setShowCloseModal(request.id)}
                 className="flex-1 font-semibold py-3 rounded-lg transition-colors bg-gray-100 text-gray-600 hover:bg-gray-200">
-                Закрыть
+                {t('yardym.close')}
               </button>
             </div>
           ) : user ? (
@@ -268,11 +281,11 @@ function MicroYardym() {
                   ? 'bg-rose-500 text-white hover:bg-rose-600'
                   : 'bg-emerald-500 text-white hover:bg-emerald-600'
               }`}>
-              {hasResponded ? '✓ Вы откликнулись' : isUrgent ? 'Я МОГУ ПОМОЧЬ' : 'Откликнуться'}
+              {hasResponded ? t('yardym.responded') : isUrgent ? t('yardym.i_can_help') : t('yardym.respond')}
             </button>
           ) : (
             <button onClick={() => {}} disabled className="w-full bg-gray-100 text-gray-400 font-semibold py-3 rounded-lg text-sm">
-              Войдите, чтобы откликнуться
+              {t('yardym.login_to_respond')}
             </button>
           )}
           {isUrgent && (
@@ -299,12 +312,12 @@ function MicroYardym() {
       <div className="bg-white px-4 py-4 border-b border-gray-200">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h1 className="text-xl font-bold text-gray-800">Микро-Ярдым</h1>
-            <p className="text-sm text-gray-500">Взаимопомощь сообщества</p>
+            <h1 className="text-xl font-bold text-gray-800">{t('yardym.title')}</h1>
+            <p className="text-sm text-gray-500">{t('yardym.subtitle')}</p>
           </div>
           <button onClick={() => user ? setShowAddModal(true) : undefined}
             className={`flex items-center gap-1 px-3 py-2 rounded-lg text-sm font-medium ${user ? 'bg-emerald-500 text-white' : 'bg-gray-100 text-gray-400'}`}>
-            <Plus className="w-4 h-4" />Добавить
+            <Plus className="w-4 h-4" />{t('yardym.add')}
           </button>
         </div>
         
@@ -313,7 +326,7 @@ function MicroYardym() {
             <Search className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
             <input
               type="text"
-              placeholder="Поиск по селу, описанию..."
+              placeholder={t('yardym.search_placeholder')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500"
@@ -327,10 +340,10 @@ function MicroYardym() {
                 onChange={(e) => setFilterType(e.target.value)}
                 className="bg-transparent text-sm text-gray-700 focus:outline-none"
               >
-                <option value="all">Все типы</option>
-                <option value="blood">Кровь</option>
-                <option value="money">Сбор средств</option>
-                <option value="other">Другое</option>
+                <option value="all">{t('yardym.filter_all_types')}</option>
+                <option value="blood">{t('yardym.filter_blood')}</option>
+                <option value="money">{t('yardym.filter_money')}</option>
+                <option value="other">{t('yardym.filter_other')}</option>
               </select>
             </div>
             <div className="flex items-center gap-1 bg-gray-50 border border-gray-200 rounded-lg px-2 py-1 flex-shrink-0">
@@ -339,9 +352,9 @@ function MicroYardym() {
                 onChange={(e) => setFilterUrgency(e.target.value)}
                 className="bg-transparent text-sm text-gray-700 focus:outline-none"
               >
-                <option value="all">Любая срочность</option>
-                <option value="urgent">Срочные</option>
-                <option value="normal">Обычные</option>
+                <option value="all">{t('yardym.filter_all_urgency')}</option>
+                <option value="urgent">{t('yardym.filter_urgent')}</option>
+                <option value="normal">{t('yardym.filter_normal')}</option>
               </select>
             </div>
           </div>
@@ -349,12 +362,15 @@ function MicroYardym() {
       </div>
 
       <div className="p-4">
-        <h2 className="text-lg font-bold text-gray-800 mb-3">Нужна помощь прямо сейчас</h2>
-        {loading ? <div className="h-32 bg-white rounded-xl animate-pulse border border-gray-100" />
+        <h2 className="text-lg font-bold text-gray-800 mb-3">{t('yardym.urgent_title')}</h2>
+        {loading ? <Skeleton className="h-32 w-full rounded-xl" />
         : urgent.length === 0 ? (
-          <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 text-center">
-            <Heart className="w-8 h-8 text-emerald-500 mx-auto mb-2" />
-            <p className="text-emerald-700">Сейчас нет срочных обращений</p>
+          <div className="bg-white border border-dashed border-gray-200 rounded-xl p-8 text-center">
+            <div className="w-12 h-12 bg-emerald-50 rounded-full flex items-center justify-center mx-auto mb-3">
+              <Heart className="w-6 h-6 text-emerald-500" />
+            </div>
+            <p className="text-gray-800 font-medium">{t('yardym.no_urgent')}</p>
+            <p className="text-sm text-gray-500 mt-1">{t('yardym.no_urgent_desc')}</p>
           </div>
         ) : (
           <div className="space-y-3">{urgent.map(r => <RequestCard key={r.id} request={r} isUrgent />)}</div>
@@ -362,32 +378,58 @@ function MicroYardym() {
       </div>
 
       <div className="px-4 pb-24">
-        <h2 className="text-lg font-bold text-gray-800 mb-3">Все обращения</h2>
+        <h2 className="text-lg font-bold text-gray-800 mb-3">{t('yardym.all_requests')}</h2>
         {loading ? (
-          <div className="space-y-3">{[...Array(2)].map((_, i) => <div key={i} className="h-24 bg-white rounded-xl animate-pulse border border-gray-100" />)}</div>
+          <div className="space-y-3">
+            {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-32 w-full rounded-xl" />)}
+          </div>
         ) : normal.length === 0 ? (
-          <div className="text-center py-8">
-            <HelpCircle className="w-12 h-12 text-gray-200 mx-auto mb-3" />
-            <p className="text-gray-400">Нет активных обращений</p>
+          <div className="bg-white border border-dashed border-gray-200 rounded-xl p-12 text-center">
+            <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4">
+              <HelpCircle className="w-8 h-8 text-gray-300" />
+            </div>
+            <p className="text-gray-800 font-semibold text-lg">{t('yardym.no_requests')}</p>
+            <p className="text-gray-500 mt-2 max-w-[240px] mx-auto">
+              {t('yardym.no_requests_desc')}
+            </p>
           </div>
         ) : (
           <div className="space-y-3">{normal.map(r => <RequestCard key={r.id} request={r} />)}</div>
         )}
       </div>
 
+      {/* Success Modal */}
+      {showSuccessModal && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center modal-overlay" onClick={() => setShowSuccessModal(false)}>
+          <div className="bg-white w-[280px] rounded-2xl p-8 animate-fade-in text-center shadow-2xl" onClick={e => e.stopPropagation()}>
+            <div className="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-6 animate-bounce">
+              <Check className="w-10 h-10 text-emerald-600" />
+            </div>
+            <h2 className="text-xl font-bold text-gray-800 mb-2">{t('yardym.success_title')}</h2>
+            <p className="text-gray-500 text-sm mb-6">{t('yardym.success_desc')}</p>
+            <button 
+              onClick={() => setShowSuccessModal(false)}
+              className="w-full bg-emerald-500 text-white font-semibold py-3 rounded-xl hover:bg-emerald-600 transition-colors"
+            >
+              {t('yardym.success_button')}
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Add Modal */}
       {showAddModal && (
         <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center modal-overlay" onClick={() => setShowAddModal(false)}>
           <div className="bg-white w-full max-w-md rounded-t-2xl sm:rounded-2xl p-6 animate-slide-up max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-bold text-gray-800">{editingId ? 'Редактировать' : 'Новое обращение'}</h2>
+              <h2 className="text-xl font-bold text-gray-800">{editingId ? t('yardym.modal_edit_title') : t('yardym.modal_add_title')}</h2>
               <button onClick={() => { setShowAddModal(false); setEditingId(null); setNewReq({ type: 'other', urgency: 'normal', title: '', location: '', description: '', contact_phone: '', cloudtips_url: '' }); }}><X className="w-6 h-6 text-gray-400" /></button>
             </div>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Тип помощи</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('yardym.label_type')}</label>
                 <div className="flex gap-2">
-                  {([['blood','Кровь',Droplets],['money','Финансы',Banknote],['other','Другое',HelpCircle]] as const).map(([v,l,Icon]) => (
+                  {([['blood',t('yardym.filter_blood'),Droplets],['money',t('yardym.filter_money'),Banknote],['other',t('yardym.filter_other'),HelpCircle]] as const).map(([v,l,Icon]) => (
                     <button key={v} onClick={() => setNewReq(r => ({ ...r, type: v }))}
                       className={`flex-1 flex items-center justify-center gap-1 py-2 rounded-lg border text-sm ${newReq.type === v ? 'border-emerald-500 bg-emerald-50 text-emerald-700' : 'border-gray-200 text-gray-600'}`}>
                       <Icon className="w-4 h-4" />{l}
@@ -396,25 +438,36 @@ function MicroYardym() {
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Срочность</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('yardym.label_urgency')}</label>
                 <div className="flex gap-2">
-                  {([['urgent','🔴 Срочно'],['normal','Обычно']] as const).map(([v,l]) => (
+                  {([['urgent',t('yardym.urgent_label')],['normal',t('yardym.normal_label')]] as const).map(([v,l]) => (
                     <button key={v} onClick={() => setNewReq(r => ({ ...r, urgency: v }))}
                       className={`flex-1 py-2 rounded-lg border text-sm ${newReq.urgency === v ? 'border-emerald-500 bg-emerald-50 text-emerald-700' : 'border-gray-200 text-gray-600'}`}>{l}</button>
                   ))}
                 </div>
               </div>
-              {[['title','Заголовок','Нужна кровь 4+','text'],['location','Место','Симферополь, адрес','text'],['contact_phone','Телефон','+7 (978)...','tel'],['cloudtips_url','Ссылка CloudTips','https://pay.cloudtips.ru/...','url']].map(([f,l,ph,t]) => (
+              {([['title',t('yardym.label_title'),t('yardym.placeholder_title'),'text'],['location',t('yardym.label_location'),t('yardym.placeholder_location'),'text'],['contact_phone',t('yardym.label_phone'),t('yardym.placeholder_phone'),'tel'],['cloudtips_url',t('yardym.label_cloudtips'),t('yardym.placeholder_cloudtips'),'url']] as const).map(([f,l,ph,t_input]) => (
                 <div key={f}>
                   <label className="block text-sm font-medium text-gray-700 mb-1">{l}</label>
-                  <input type={t} value={(newReq as any)[f]} placeholder={ph}
-                    onChange={e => setNewReq(r => ({ ...r, [f]: e.target.value }))}
+                  <input type={t_input} value={(newReq as any)[f]} placeholder={ph}
+                    onChange={e => {
+                      let val = e.target.value;
+                      if (f === 'contact_phone') {
+                        // Simple phone mask logic
+                        const x = val.replace(/\D/g, '').match(/(\d{0,1})(\d{0,3})(\d{0,3})(\d{0,2})(\d{0,2})/);
+                        if (!x) return;
+                        if (!x[2]) val = x[1] ? `+${x[1]}` : '';
+                        else val = `+${x[1] || '7'} (${x[2]}${x[3] ? `) ${x[3]}` : ''}${x[4] ? `-${x[4]}` : ''}${x[5] ? `-${x[5]}` : ''}`;
+                        if (val.length > 18) val = val.substring(0, 18);
+                      }
+                      setNewReq(r => ({ ...r, [f]: val }));
+                    }}
                     className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent" />
                 </div>
               ))}
               <div>
                 <div className="flex justify-between items-center mb-1">
-                  <label className="block text-sm font-medium text-gray-700">Описание</label>
+                  <label className="block text-sm font-medium text-gray-700">{t('yardym.label_description')}</label>
                   <span className={`text-xs ${newReq.description.length > 500 ? 'text-rose-500' : 'text-gray-400'}`}>
                     {newReq.description.length}/500
                   </span>
@@ -425,7 +478,7 @@ function MicroYardym() {
               </div>
               <button onClick={handleAdd} disabled={!newReq.title || !newReq.location || !newReq.description || submitting}
                 className="w-full bg-emerald-500 text-white font-semibold py-3 rounded-xl hover:bg-emerald-600 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed">
-                {submitting ? 'Публикация...' : 'Опубликовать'}
+                {submitting ? t('yardym.publishing') : t('yardym.publish')}
               </button>
             </div>
           </div>
@@ -436,11 +489,11 @@ function MicroYardym() {
       {showResponseModal && (
         <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center modal-overlay" onClick={() => setShowResponseModal(null)}>
           <div className="bg-white w-full max-w-md rounded-t-2xl sm:rounded-2xl p-6 animate-slide-up" onClick={e => e.stopPropagation()}>
-            <h2 className="text-xl font-bold text-gray-800 mb-4">Вы готовы помочь?</h2>
-            <p className="text-gray-600 mb-6">Нажимая «Подтвердить», вы сообщаете о своей готовности. Организатор увидит ваш отклик и может связаться с вами.</p>
+            <h2 className="text-xl font-bold text-gray-800 mb-4">{t('yardym.respond_confirm_title')}</h2>
+            <p className="text-gray-600 mb-6">{t('yardym.respond_confirm_desc')}</p>
             <div className="flex gap-3">
-              <button onClick={() => setShowResponseModal(null)} className="flex-1 py-3 border border-gray-200 rounded-xl text-gray-600">Отмена</button>
-              <button onClick={() => handleRespond(showResponseModal)} className="flex-1 bg-emerald-500 text-white py-3 rounded-xl font-medium hover:bg-emerald-600">Подтвердить</button>
+              <button onClick={() => setShowResponseModal(null)} className="flex-1 py-3 border border-gray-200 rounded-xl text-gray-600">{t('common.cancel')}</button>
+              <button onClick={() => handleRespond(showResponseModal)} className="flex-1 bg-emerald-500 text-white py-3 rounded-xl font-medium hover:bg-emerald-600">{t('common.confirm')}</button>
             </div>
           </div>
         </div>
@@ -450,11 +503,11 @@ function MicroYardym() {
       {showCloseModal && (
         <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center modal-overlay" onClick={() => setShowCloseModal(null)}>
           <div className="bg-white w-full max-w-md rounded-t-2xl sm:rounded-2xl p-6 animate-slide-up" onClick={e => e.stopPropagation()}>
-            <h2 className="text-xl font-bold text-gray-800 mb-4">Закрыть обращение?</h2>
-            <p className="text-gray-600 mb-6">Вы уверены, что хотите закрыть это обращение? Оно будет отмечено как завершенное и больше не будет отображаться в активных.</p>
+            <h2 className="text-xl font-bold text-gray-800 mb-4">{t('yardym.close_confirm_title')}</h2>
+            <p className="text-gray-600 mb-6">{t('yardym.close_confirm_desc')}</p>
             <div className="flex gap-3">
-              <button onClick={() => setShowCloseModal(null)} className="flex-1 py-3 border border-gray-200 rounded-xl text-gray-600">Отмена</button>
-              <button onClick={() => handleClose(showCloseModal)} className="flex-1 bg-emerald-500 text-white py-3 rounded-xl font-medium hover:bg-emerald-600">Закрыть</button>
+              <button onClick={() => setShowCloseModal(null)} className="flex-1 py-3 border border-gray-200 rounded-xl text-gray-600">{t('common.cancel')}</button>
+              <button onClick={() => handleClose(showCloseModal)} className="flex-1 bg-emerald-500 text-white py-3 rounded-xl font-medium hover:bg-emerald-600">{t('yardym.close')}</button>
             </div>
           </div>
         </div>
@@ -466,7 +519,7 @@ function MicroYardym() {
           <div className="bg-white w-full max-w-md h-[80vh] sm:h-[600px] rounded-t-2xl sm:rounded-2xl flex flex-col animate-slide-up" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between p-4 border-b border-gray-100">
               <div>
-                <h2 className="text-lg font-bold text-gray-800">Обсуждение</h2>
+                <h2 className="text-lg font-bold text-gray-800">{t('yardym.comments_title')}</h2>
                 <p className="text-xs text-gray-500 truncate max-w-[250px]">{showCommentsModal.title}</p>
               </div>
               <button onClick={() => setShowCommentsModal(null)} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
@@ -482,8 +535,8 @@ function MicroYardym() {
               ) : comments.length === 0 ? (
                 <div className="text-center py-8">
                   <MessageCircle className="w-12 h-12 text-gray-200 mx-auto mb-3" />
-                  <p className="text-gray-500">Пока нет комментариев</p>
-                  <p className="text-sm text-gray-400 mt-1">Напишите первым, чтобы уточнить детали</p>
+                  <p className="text-gray-500">{t('yardym.no_comments')}</p>
+                  <p className="text-sm text-gray-400 mt-1">{t('yardym.no_comments_desc')}</p>
                 </div>
               ) : (
                 comments.map(comment => (
@@ -511,7 +564,7 @@ function MicroYardym() {
                             onClick={() => navigate(`/user/${comment.author_id}`)}
                             className="text-xs font-medium text-emerald-600 hover:underline"
                           >
-                            {comment.author?.name || 'Пользователь'}
+                            {comment.author?.name || t('auth.user')}
                           </button>
                           <button 
                             onClick={() => setShowReportModal({ type: 'comment', id: comment.id })}
@@ -529,14 +582,14 @@ function MicroYardym() {
                 ))
               )}
             </div>
-
+ 
             <div className="p-4 bg-white border-t border-gray-100">
               {user ? (
                 <div className="flex items-end gap-2">
                   <textarea
                     value={newComment}
                     onChange={e => setNewComment(e.target.value)}
-                    placeholder="Написать комментарий..."
+                    placeholder={t('yardym.comment_placeholder')}
                     className="flex-1 max-h-32 min-h-[44px] bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all resize-none"
                     rows={1}
                     onKeyDown={e => {
@@ -555,46 +608,37 @@ function MicroYardym() {
                 </div>
               ) : (
                 <div className="text-center py-2 text-sm text-gray-500">
-                  Войдите, чтобы оставлять комментарии
+                  {t('yardym.login_to_comment')}
                 </div>
               )}
             </div>
           </div>
         </div>
       )}
+
       {/* Report Modal */}
       {showReportModal && (
         <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center modal-overlay" onClick={() => setShowReportModal(null)}>
           <div className="bg-white w-full max-w-md rounded-t-2xl sm:rounded-2xl p-6 animate-slide-up" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-bold text-gray-800">Пожаловаться</h2>
+              <h2 className="text-xl font-bold text-gray-800">{t('yardym.report_title')}</h2>
               <button onClick={() => setShowReportModal(null)} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
                 <X className="w-5 h-5 text-gray-500" />
               </button>
             </div>
-            <p className="text-sm text-gray-600 mb-4">Опишите причину жалобы. Модераторы проверят информацию.</p>
+            <p className="text-sm text-gray-600 mb-4">{t('yardym.report_desc')}</p>
             <textarea
               value={reportReason}
               onChange={e => setReportReason(e.target.value)}
-              placeholder="Причина жалобы..."
+              placeholder={t('yardym.report_placeholder')}
               className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-rose-500 focus:border-transparent mb-4 resize-none h-32"
             />
             <button
               onClick={handleReport}
               disabled={submitting || !reportReason.trim()}
               className="w-full bg-rose-500 text-white font-semibold py-3 rounded-xl hover:bg-rose-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-              {submitting ? 'Отправка...' : 'Отправить жалобу'}
+              {submitting ? t('yardym.report_sending') : t('yardym.report_send')}
             </button>
-          </div>
-        </div>
-      )}
-
-      {/* Toast Notification */}
-      {toast && (
-        <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-[200] animate-slide-up">
-          <div className="bg-gray-900 text-white px-4 py-3 rounded-xl shadow-lg flex items-center gap-3 text-sm font-medium">
-            <Check className="w-5 h-5 text-emerald-400" />
-            {toast}
           </div>
         </div>
       )}

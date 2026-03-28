@@ -6,6 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import { useMeetings } from '../hooks/useMeetings';
 import { useAuth } from '../hooks/useAuth';
 import { MeetingRow } from '../lib/supabase';
+import { Skeleton } from '../components/ui/Skeleton';
 
 function VillageMeetings() {
   const navigate = useNavigate();
@@ -164,11 +165,18 @@ function VillageMeetings() {
       <div className="p-4 pb-24">
         <h2 className="text-lg font-bold text-gray-800 mb-3">Предстоящие встречи</h2>
         {loading ? (
-          <div className="space-y-4">{[...Array(2)].map((_, i) => <div key={i} className="h-48 bg-white rounded-xl animate-pulse border border-gray-100" />)}</div>
+          <div className="space-y-4">
+            {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-48 w-full rounded-xl" />)}
+          </div>
         ) : filteredMeetings.length === 0 ? (
-          <div className="text-center py-12">
-            <Calendar className="w-12 h-12 text-gray-200 mx-auto mb-3" />
-            <p className="text-gray-400">Нет предстоящих встреч</p>
+          <div className="bg-white border border-dashed border-gray-200 rounded-xl p-12 text-center">
+            <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Calendar className="w-8 h-8 text-gray-300" />
+            </div>
+            <p className="text-gray-800 font-semibold text-lg">Нет предстоящих встреч</p>
+            <p className="text-gray-500 mt-2 max-w-[240px] mx-auto">
+              Пока никто не запланировал встречу. Если вы организатор, нажмите «Добавить».
+            </p>
           </div>
         ) : (
           <div className="space-y-4">{filteredMeetings.map(m => <MeetingCard key={m.id} m={m} />)}</div>
@@ -193,7 +201,7 @@ function VillageMeetings() {
               {[
                 ['village', 'Село / населённый пункт *', 'с. Ускут', 'text'],
                 ['organizer', 'Организатор', 'Совет старейшин', 'text'],
-                ['organizer_phone', 'Телефон организатора', '+7 (978) ...', 'tel'],
+                ['organizer_phone', 'Телефон организатора', '+7 (978) 000-00-00', 'tel'],
                 ['location', 'Место проведения', 'Поляна "Кок-Асан"', 'text'],
                 ['meeting_date', 'Дата *', '', 'date'],
                 ['fund_purpose', 'Цель сбора (если есть)', 'Реставрация чешме', 'text'],
@@ -203,7 +211,17 @@ function VillageMeetings() {
                 <div key={f}>
                   <label className="block text-sm font-medium text-gray-700 mb-1">{l}</label>
                   <input type={t} value={(form as any)[f]} placeholder={ph}
-                    onChange={e => setForm(prev => ({ ...prev, [f]: e.target.value }))}
+                    onChange={e => {
+                      let val = e.target.value;
+                      if (f === 'organizer_phone') {
+                        const x = val.replace(/\D/g, '').match(/(\d{0,1})(\d{0,3})(\d{0,3})(\d{0,2})(\d{0,2})/);
+                        if (!x) return;
+                        if (!x[2]) val = x[1] ? `+${x[1]}` : '';
+                        else val = `+${x[1] || '7'} (${x[2]}${x[3] ? `) ${x[3]}` : ''}${x[4] ? `-${x[4]}` : ''}${x[5] ? `-${x[5]}` : ''}`;
+                        if (val.length > 18) val = val.substring(0, 18);
+                      }
+                      setForm(prev => ({ ...prev, [f]: val }));
+                    }}
                     className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent" />
                 </div>
               ))}

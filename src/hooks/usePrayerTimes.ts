@@ -1,53 +1,48 @@
-import { useState, useEffect } from 'react'
+import useSWR, { mutate } from 'swr'
 import { supabase, PrayerTimeRow } from '../lib/supabase'
 import { prayerTimes2026 } from '../data/prayerTimes'
 import { format } from 'date-fns'
 
 export function usePrayerTimesForDate(date: Date) {
-  const [prayers, setPrayers] = useState<PrayerTimeRow | null>(null)
-  const [loading, setLoading] = useState(true)
   const dateStr = format(date, 'yyyy-MM-dd')
-
-  useEffect(() => {
-    let cancelled = false; setLoading(true)
-    supabase.from('prayer_times').select('*').eq('date', dateStr).single()
-      .then(({ data, error }) => {
-        if (cancelled) return
-        if (data && !error) {
-          setPrayers({ ...data, fajr: data.fajr.slice(0,5), sunrise: data.sunrise.slice(0,5),
-            dhuhr: data.dhuhr.slice(0,5), asr: data.asr.slice(0,5),
-            maghrib: data.maghrib.slice(0,5), isha: data.isha.slice(0,5) })
-        } else {
-          const s = prayerTimes2026[dateStr]
-          setPrayers(s ? { id: 0, ...s } as PrayerTimeRow : null)
-        }
-        setLoading(false)
-      })
-    return () => { cancelled = true }
-  }, [dateStr])
+  const { data: prayers = null, isLoading: loading } = useSWR(`prayers_${dateStr}`, async () => {
+    const { data, error } = await supabase.from('prayer_times').select('*').eq('date', dateStr).single()
+    if (data && !error) {
+      return { 
+        ...data, 
+        fajr: data.fajr.slice(0,5), 
+        sunrise: data.sunrise.slice(0,5),
+        dhuhr: data.dhuhr.slice(0,5), 
+        asr: data.asr.slice(0,5),
+        maghrib: data.maghrib.slice(0,5), 
+        isha: data.isha.slice(0,5) 
+      } as PrayerTimeRow
+    } else {
+      const s = prayerTimes2026[dateStr]
+      return s ? { id: 0, ...s } as PrayerTimeRow : null
+    }
+  })
 
   return { prayers, loading }
 }
 
 export function usePrayerCompletions(userId: string | null, date: Date) {
-  const [completed, setCompleted] = useState<string[]>([])
   const dateStr = format(date, 'yyyy-MM-dd')
-
-  useEffect(() => {
-    if (!userId) { setCompleted([]); return }
-    supabase.from('prayer_completions').select('prayer_key').eq('user_id', userId).eq('date', dateStr)
-      .then(({ data }) => setCompleted(data?.map(r => r.prayer_key) ?? []))
-  }, [userId, dateStr])
+  const { data: completed = [], isLoading: loading } = useSWR(userId ? `completions_${userId}_${dateStr}` : null, async () => {
+    const { data, error } = await supabase.from('prayer_completions').select('prayer_key').eq('user_id', userId!).eq('date', dateStr)
+    if (error) throw error
+    return data?.map(r => r.prayer_key) ?? []
+  })
 
   const toggle = async (prayerKey: string) => {
     if (!userId) return
-    if (completed.includes(prayerKey)) {
+    const isCompleted = completed.includes(prayerKey)
+    if (isCompleted) {
       await supabase.from('prayer_completions').delete().eq('user_id', userId).eq('date', dateStr).eq('prayer_key', prayerKey)
-      setCompleted(prev => prev.filter(k => k !== prayerKey))
     } else {
       await supabase.from('prayer_completions').insert({ user_id: userId, date: dateStr, prayer_key: prayerKey })
-      setCompleted(prev => [...prev, prayerKey])
     }
+    mutate(`completions_${userId}_${dateStr}`)
   }
-  return { completed, toggle }
+  return { completed, toggle, loading }
 }
