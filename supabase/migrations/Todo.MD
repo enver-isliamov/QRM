@@ -242,7 +242,7 @@ CMS для Админа (Этап 13): Возможность управлять
 | 13.5 | CRUD событий календаря | Supabase `ethno_events` | Работает | ✅ |
 | 13.6 | Закрыть обращение Ярдым | UPDATE `status = 'completed'` | Работает | ✅ |
 | 13.7 | Список встреч → детальная | `navigate('/meetings/:id')` | Работает | ✅ |
-| 13.8 | CRUD обрядов и шагов | Supabase `rituals` + `ritual_steps` | ✅ |
+| 13.8 | CRUD обрядов | Supabase `rituals` | Работает | ✅ |
 | 13.9 | Feature Toggles | Zustand persist | Работает (только для текущего браузера) | ⚠️ |
 | 13.10 | Журнал действий (Audit Log) | Запись при каждом действии | `logAudit()` вызывается | ✅ |
 | 13.11 | Жалобы: одобрить/отклонить | UPDATE `reports.status` | Работает | ✅ |
@@ -318,15 +318,13 @@ CMS для Админа (Этап 13): Возможность управлять
 - [x] A1.10 — Создать/проверить `meetings_with_stats` VIEW с `attendees_count`, `subscribers_count`, `fund_progress`
 
 **A2. Настроить RLS**
-- [x] A2.1 — `profiles`: SELECT all (public), UPDATE own, INSERT auth trigger (Миграция 20260328_rls.sql)
-- [x] A2.2 — `prayer_completions`: SELECT/INSERT/DELETE own (`user_id = auth.uid()`) (Миграция 20260328_rls.sql)
-- [x] A2.3 — `help_responses`: INSERT auth, UNIQUE constraint `(request_id, user_id)` (Миграция 20260328_rls.sql)
-- [x] A2.4 — `meeting_attendees`: INSERT/DELETE own, SELECT all (Миграция 20260328_rls.sql)
-- [x] A2.5 — `user_notifications`: SELECT/UPDATE own `user_id` (Миграция 20260328_rls.sql)
-- [x] A2.6 — `audit_logs`: INSERT admin/moderator, SELECT admin only (Миграция 20260328_rls.sql)
-- [x] A2.7 — `reports`: INSERT auth, SELECT admin/moderator (Миграция 20260328_rls.sql)
-- [x] A2.8 — `meetings`: SELECT all, INSERT auth, UPDATE own/admin (Миграция 20260328_rls.sql)
-- [x] A2.9 — `help_requests`: SELECT all, INSERT auth, UPDATE own/admin (Миграция 20260328_rls.sql)
+- [ ] A2.1 — `profiles`: SELECT all (public), UPDATE own, INSERT auth trigger
+- [ ] A2.2 — `prayer_completions`: SELECT/INSERT/DELETE own (`user_id = auth.uid()`)
+- [ ] A2.3 — `help_responses`: INSERT auth, UNIQUE constraint `(request_id, user_id)`
+- [ ] A2.4 — `meeting_attendees`: INSERT/DELETE own, SELECT all
+- [ ] A2.5 — `user_notifications`: SELECT/UPDATE own `user_id`
+- [ ] A2.6 — `audit_logs`: INSERT admin/moderator, SELECT admin only
+- [ ] A2.7 — `reports`: INSERT auth, SELECT admin/moderator
 
 **A3. Trigger: автосоздание профиля**
 - [x] A3.1 — Создать trigger `on_auth_user_created` → INSERT INTO `profiles` (id, email, name from metadata, provider)
@@ -334,9 +332,9 @@ CMS для Админа (Этап 13): Возможность управлять
 - [x] A3.3 — Проверить что Magic Link корректно создаёт профиль
 
 **A4. Данные намазов (БАГ-3)**
-- [x] A4.1 — Рассчитать намазы для Симферополя на апрель 2026 (первые 10 дней)
-- [x] A4.2 — Загрузить данные в Supabase `prayer_times` (Миграция 20260328_prayer_data.sql)
-- [x] A4.3 — Добавить статический fallback в `src/data/prayerTimes.ts` на апрель
+- [ ] A4.1 — Рассчитать намазы для Симферополя на апрель–декабрь 2026 (источник: qmdi.ru)
+- [ ] A4.2 — Загрузить 300+ строк в Supabase `prayer_times` через SQL INSERT или CSV import
+- [ ] A4.3 — Добавить статический fallback в `src/data/prayerTimes.ts` на оставшиеся месяцы
 - [ ] A4.4 — Протестировать переход через 31 марта → 1 апреля
 
 **A5. Исправить мелкие баги**
@@ -385,12 +383,12 @@ FOR EACH ROW EXECUTE FUNCTION notify_help_author();
 - [x] B3.1 — Trigger на INSERT `help_responses` → UPDATE `profiles.trust_score += 10`
 - [x] B3.2 — Trigger на INSERT `help_requests` → UPDATE `profiles.trust_score += 5`
 - [x] B3.3 — Trigger на INSERT `meetings` → UPDATE `profiles.trust_score += 20`
-- [x] B3.4 — Убрать client-side расчёт из `Profile.tsx`, читать `profile.trust_score` из БД
+- [ ] B3.4 — Убрать client-side расчёт из `Profile.tsx`, читать `profile.trust_score` из БД
 
 **B4. Trigger: автоматические бейджи**
 - [x] B4.1 — Функция `update_user_badges(user_id)` → проверяет пороги и обновляет `profiles.badges`
 - [x] B4.2 — Вызывать из triggers trust_score
-- [x] B4.3 — Читать `profile.badges` в `Profile.tsx` вместо client-side вычисления
+- [ ] B4.3 — Читать `profile.badges` в `Profile.tsx` вместо client-side вычисления
 
 ---
 
@@ -414,9 +412,9 @@ FOR EACH ROW EXECUTE FUNCTION notify_help_author();
 - [ ] C2.4 — Проверить шаблон письма Magic Link (русский текст)
 
 **C3. Storage (если потребуются аватары)**
-- [x] C3.1 — Создать bucket `avatars` в Supabase Storage
-- [x] C3.2 — RLS: SELECT all, INSERT/UPDATE own
-- [x] C3.3 — Добавить UI загрузки аватара в Profile.tsx
+- [ ] C3.1 — Создать bucket `avatars` в Supabase Storage
+- [ ] C3.2 — RLS: SELECT all, INSERT/UPDATE own
+- [ ] C3.3 — Добавить UI загрузки аватара в Profile.tsx
 
 ---
 
@@ -428,9 +426,9 @@ FOR EACH ROW EXECUTE FUNCTION notify_help_author();
 - [ ] D1.3 — Обновить статический fallback в коде
 
 **D2. Сохранение языка в профиле**
-- [x] D2.1 — При `i18n.changeLanguage(lang)` → UPDATE `profiles.language = lang` (Реализовано в Profile.tsx)
-- [x] D2.2 — При загрузке профиля → `i18n.changeLanguage(profile.language ?? 'ru')` (Реализовано в useAuth.ts)
-- [x] D2.3 — Убрать Zustand `language` state (дублирование с i18next) (Выполнено)
+- [ ] D2.1 — При `i18n.changeLanguage(lang)` → UPDATE `profiles.language = lang`
+- [ ] D2.2 — При загрузке профиля → `i18n.changeLanguage(profile.language ?? 'ru')`
+- [ ] D2.3 — Убрать Zustand `language` state (дублирование с i18next)
 
 **D3. Push-уведомления (полная реализация)**
 - [ ] D3.1 — Сгенерировать VAPID ключи: `npx web-push generate-vapid-keys`
@@ -445,10 +443,14 @@ FOR EACH ROW EXECUTE FUNCTION notify_help_author();
 - [ ] D3.6 — Вызывать Edge Function из triggers уведомлений
 - [ ] D3.7 — Тестировать на Android Chrome (iOS Safari не поддерживает Push в PWA)
 
-**D4. Полный i18n (крымскотатарский)** ⚠️
-- [x] D4.1 — Аудит всех hardcoded строк в компонентах (Выполнено для MicroYardym)
-- [x] D4.2 — Добавить ключи перевода в `src/i18n.ts` для всех UI строк (Выполнено для MicroYardym)
-- [x] D4.3 — Использовать `useTranslation()` вместо hardcoded строк (Выполнено для MicroYardym)
+**D4. Полный i18n (крымскотатарский)**
+- [ ] D4.1 — Аудит всех hardcoded строк в компонентах
+- [ ] D4.2 — Добавить ключи перевода в `src/i18n.ts` для всех UI строк:
+  - Кнопки («Войти», «Выйти», «Я ПОЕДУ», «Откликнуться»)
+  - Заголовки страниц
+  - Модалки («Вы уверены?», «Отмена», «Подтвердить»)
+  - Сообщения об ошибках и состояниях
+- [ ] D4.3 — Использовать `useTranslation()` вместо hardcoded строк
 
 **D5. Offline-режим PWA**
 - [x] D5.1 — Обновить `sw.js`: кэшировать JS/CSS бандлы при install
@@ -456,10 +458,10 @@ FOR EACH ROW EXECUTE FUNCTION notify_help_author();
 - [x] D5.3 — Показывать offline-баннер если нет сети
 - [ ] D5.4 — Кэшировать данные намазов на текущую неделю
 
-**D6. Автор может редактировать шаги обряда (Admin)** ✅
-- [x] D6.1 — В вкладке «Обряды» Admin: при клике на обряд → список шагов
-- [x] D6.2 — CRUD для `ritual_steps`: добавить, редактировать, удалить шаг
-- [x] D6.3 — Поле `step_order`: перетаскивание или кнопки ↑↓
+**D6. Автор может редактировать шаги обряда (Admin)**
+- [ ] D6.1 — В вкладке «Обряды» Admin: при клике на обряд → список шагов
+- [ ] D6.2 — CRUD для `ritual_steps`: добавить, редактировать, удалить шаг
+- [ ] D6.3 — Поле `step_order`: перетаскивание или кнопки ↑↓
 
 ---
 
@@ -467,24 +469,24 @@ FOR EACH ROW EXECUTE FUNCTION notify_help_author();
 
 **E1. Состояния загрузки и ошибок**
 - [x] E1.1 — Добавить Error Boundary вокруг `<App />` → красивый экран ошибки
-- [x] E1.2 — Skeleton screens вместо `animate-pulse` в списках (более точная форма)
-- [x] E1.3 — Toast-уведомления унифицированы через `sonner`
-- [x] E1.4 — Пустые состояния: добавлены иллюстрации/иконки для списков без данных
+- [ ] E1.2 — Skeleton screens вместо `animate-pulse` в списках (более точная форма)
+- [ ] E1.3 — Toast-уведомления унифицировать (сейчас разные реализации в Admin и MicroYardym)
+- [ ] E1.4 — Пустые состояния: добавить иллюстрации/иконки для списков без данных
 
 **E2. Форма создания обращения (Ярдым)**
-- [x] E2.1 — Валидация телефона: маска `+7 (___) ___-__-__` добавлена в Ярдым и Встречи
+- [ ] E2.1 — Валидация телефона: маска `+7 (___) ___-__-__`
 - [x] E2.2 — Счётчик символов для описания (макс 500)
-- [x] E2.3 — Подтверждение после публикации: анимированный checkmark в MicroYardym
+- [ ] E2.3 — Подтверждение после публикации: анимированный checkmark
 
 **E3. Детальная встречи — улучшения**
 - [x] E3.1 — Карта с меткой места (Yandex Maps iframe или статическая картинка)
-- [x] E3.2 — Добавить в календарь: Google Calendar ссылка в MeetingDetail
-- [x] E3.3 — Счётчик «дней до встречи» добавлен в MeetingDetail
+- [ ] E3.2 — Добавить в календарь (iCal/Google Calendar ссылка)
+- [ ] E3.3 — Счётчик «дней до встречи»
 
 **E4. Главная страница**
-- [x] E4.1 — Текущий намаз: подсветка ближайшего по времени (реализовано в Home)
-- [x] E4.2 — Обратный отсчёт до следующего намаза (реализовано в Home)
-- [x] E4.3 — Виджет: сколько намазов выполнено сегодня (реализовано в Home)
+- [x] E4.1 — Текущий намаз: подсветка ближайшего по времени
+- [x] E4.2 — Обратный отсчёт до следующего намаза
+- [x] E4.3 — Виджет: сколько намазов выполнено сегодня (если авторизован)
 
 ---
 
@@ -492,13 +494,13 @@ FOR EACH ROW EXECUTE FUNCTION notify_help_author();
 
 **F1. Безопасность**
 - [ ] F1.1 — Проверить все Supabase RLS через `supabase inspect db lint`
-- [x] F1.2 — Заголовки CSP в `vercel.json` (Content-Security-Policy) добавлены
-- [x] F1.3 — Ограничить `admin_stats` VIEW только для admin через RLS/SECURITY DEFINER (реализовано через WHERE EXISTS)
-- [x] F1.4 — `audit_logs`: запись через RPC `log_admin_action` (SECURITY DEFINER)
-- [x] F1.5 — Rate limiting на создание обращений Ярдым (макс 3 активных от одного пользователя)
+- [ ] F1.2 — Заголовки CSP в `vercel.json` (Content-Security-Policy)
+- [ ] F1.3 — Ограничить `admin_stats` VIEW только для admin через RLS/SECURITY DEFINER
+- [ ] F1.4 — `audit_logs`: убедиться что пользователь не может писать напрямую (только через DEFINER functions)
+- [ ] F1.5 — Rate limiting на создание обращений Ярдым (макс 3 активных от одного пользователя)
 
 **F2. Производительность**
-- [x] F2.1 — SWR добавлен во все основные хуки (useHelpRequests, useMeetings, useEthnoEvents, useRituals, useNotifications, useAuth, usePrayerTimes)
+- [ ] F2.1 — SWR добавить в `useHelpRequests`, `useMeetings`, `useEthnoEvents` (сейчас только в Admin)
 - [ ] F2.2 — Пагинация для `notifications` (сейчас лимит 50)
 - [ ] F2.3 — Пагинация для встреч при большом количестве
 - [ ] F2.4 — `React.memo` для `RequestCard` в MicroYardym
@@ -530,9 +532,9 @@ FOR EACH ROW EXECUTE FUNCTION notify_help_author();
 
 | Задача | Из версии | Статус |
 |--------|-----------|--------|
-| Язык сохранять в профиле БД | v2, v3 | ✅ реализовано |
+| Язык сохранять в профиле БД | v2, v3 | ❌ не реализовано |
 | Автор закрывает своё обращение | v2 | ✅ реализовано |
-| Редактирование обрядов и шагов в Админ | v2 | ✅ реализовано |
+| Редактирование обрядов в Админ | v2 | ✅ реализовано |
 | Push-уведомления | v2, v3 | ⚠️ частично |
 | Намазы 2027 | v2, v3 | ❌ не реализовано |
 | Редактирование встречи организатором `/meetings/:id/edit` | v2 | ✅ реализовано |
@@ -552,9 +554,9 @@ FOR EACH ROW EXECUTE FUNCTION notify_help_author();
 | D1 — Намазы 2027 | Низкая | 🟡 Средняя | После A |
 | D2 — Язык в профиле | Низкая | 🟡 Средняя | После B |
 | D3 — Push полный | Высокая | 🟡 Средняя | После B |
-| D4 — Полный i18n | Высокая | 🟡 Средняя | ⚠️ Частично (MicroYardym) |
+| D4 — Полный i18n | Высокая | 🟡 Средняя | Когда будет время |
 | D5 — Offline PWA | Средняя | 🟢 Низкая | После D |
-| D6 — Шаги обрядов | Низкая | 🟢 Низкая | ✅ Выполнено |
+| D6 — Шаги обрядов | Низкая | 🟢 Низкая | После D |
 | E — UX полировка | Средняя | 🟢 Низкая | Итерационно |
 | F — Безопасность | Средняя | 🟡 Средняя | После A+B |
 | G — Аналитика | Низкая | 🟢 Низкая | В любой момент |
