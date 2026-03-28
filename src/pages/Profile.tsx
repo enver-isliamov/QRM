@@ -15,18 +15,8 @@ function Profile() {
   const { i18n } = useTranslation();
   const language = i18n.language as 'ru' | 'crh';
 
-  const setLanguageState = async (lang: 'ru' | 'crh') => {
+  const setLanguageState = (lang: 'ru' | 'crh') => {
     i18n.changeLanguage(lang);
-    if (user) {
-      try {
-        await supabase
-          .from('profiles')
-          .update({ language: lang })
-          .eq('id', user.id);
-      } catch (error) {
-        console.error('Error updating language:', error);
-      }
-    }
   };
   
   const [stats, setStats] = useState({

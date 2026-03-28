@@ -413,13 +413,8 @@ function MicroYardym() {
                 </div>
               ))}
               <div>
-                <div className="flex justify-between items-center mb-1">
-                  <label className="block text-sm font-medium text-gray-700">Описание</label>
-                  <span className={`text-xs ${newReq.description.length > 500 ? 'text-rose-500' : 'text-gray-400'}`}>
-                    {newReq.description.length}/500
-                  </span>
-                </div>
-                <textarea value={newReq.description} rows={3} maxLength={500}
+                <label className="block text-sm font-medium text-gray-700 mb-1">Описание</label>
+                <textarea value={newReq.description} rows={3}
                   onChange={e => setNewReq(r => ({ ...r, description: e.target.value }))}
                   className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent resize-none" />
               </div>

@@ -65,41 +65,35 @@ export default function Admin() {
 
   const loadTab = async (t: Tab) => {
     setLoading(true)
-    try {
-      if (t === 'stats' && !isModerator) {
-        const { data } = await supabase.from('admin_stats').select('*').single()
-        if (data) setStats(data as any)
-      }
-      if (t === 'events') {
-        const { data } = await supabase.from('ethno_events').select('*').order('event_date')
-        if (data) setEvents(data as EventRow[])
-      }
-      if (t === 'help') {
-        const { data } = await supabase.from('help_requests_with_count').select('*').order('created_at', { ascending: false })
-        if (data) setHelpReqs(data as HelpRow[])
-      }
-      if (t === 'moderation') {
-        const { data } = await supabase.from('help_requests_with_count').select('*').eq('status', 'pending').order('created_at', { ascending: false })
-        if (data) setHelpReqs(data as HelpRow[])
-        const { data: reportsData } = await supabase.from('reports').select('*').order('created_at', { ascending: false })
-        if (reportsData) setReports(reportsData as ReportRow[])
-        const { data: auditData } = await supabase.from('audit_logs').select('*, admin:profiles!audit_logs_admin_id_fkey(name, email)').order('created_at', { ascending: false }).limit(50)
-        if (auditData) setAuditLogs(auditData as AuditLogRow[])
-      }
-      if (t === 'meetings') {
-        const { data } = await supabase.from('meetings_with_stats').select('*').order('meeting_date', { ascending: false })
-        if (data) setMeetingList(data as MeetRow[])
-      }
-      if (t === 'rituals') {
-        const { data } = await supabase.from('rituals').select('*').order('sort_order')
-        if (data) setRituals(data as RitualRow[])
-      }
-    } catch (error) {
-      console.error('Error loading tab data:', error)
-      showToast('Ошибка загрузки данных')
-    } finally {
-      setLoading(false)
+    if (t === 'stats' && !isModerator) {
+      const { data } = await supabase.from('admin_stats').select('*').single()
+      if (data) setStats(data as any)
     }
+    if (t === 'events') {
+      const { data } = await supabase.from('ethno_events').select('*').order('event_date')
+      if (data) setEvents(data as EventRow[])
+    }
+    if (t === 'help') {
+      const { data } = await supabase.from('help_requests_with_count').select('*').order('created_at', { ascending: false })
+      if (data) setHelpReqs(data as HelpRow[])
+    }
+    if (t === 'moderation') {
+      const { data } = await supabase.from('help_requests_with_count').select('*').eq('status', 'pending').order('created_at', { ascending: false })
+      if (data) setHelpReqs(data as HelpRow[])
+      const { data: reportsData } = await supabase.from('reports').select('*').order('created_at', { ascending: false })
+      if (reportsData) setReports(reportsData as ReportRow[])
+      const { data: auditData } = await supabase.from('audit_logs').select('*, admin:profiles!audit_logs_admin_id_fkey(name, email)').order('created_at', { ascending: false }).limit(50)
+      if (auditData) setAuditLogs(auditData as AuditLogRow[])
+    }
+    if (t === 'meetings') {
+      const { data } = await supabase.from('meetings_with_stats').select('*').order('meeting_date', { ascending: false })
+      if (data) setMeetingList(data as MeetRow[])
+    }
+    if (t === 'rituals') {
+      const { data } = await supabase.from('rituals').select('*').order('sort_order')
+      if (data) setRituals(data as RitualRow[])
+    }
+    setLoading(false)
   }
 
   const logAudit = async (action: string, target_type: string, target_id: string) => {

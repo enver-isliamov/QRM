@@ -11,6 +11,10 @@ interface AppState {
   logout: () => void;
   updateUser: (updates: Partial<User>) => void;
   
+  // Language
+  language: 'ru' | 'crh';
+  setLanguage: (lang: 'ru' | 'crh') => void;
+  
   // Prayer tracking
   completedPrayers: Record<string, string[]>;
   togglePrayer: (date: string, prayer: string) => void;
@@ -122,6 +126,10 @@ export const useStore = create<AppState>()(
         user: state.user ? { ...state.user, ...updates } : null
       })),
       
+      // Language
+      language: 'ru',
+      setLanguage: (language) => set({ language }),
+      
       // Prayer tracking
       completedPrayers: {},
       togglePrayer: (date, prayer) => set((state) => {
@@ -204,6 +212,7 @@ export const useStore = create<AppState>()(
       partialize: (state) => ({
         user: state.user,
         isAuthenticated: state.isAuthenticated,
+        language: state.language,
         completedPrayers: state.completedPrayers,
         meetings: state.meetings,
         featureToggles: state.featureToggles
