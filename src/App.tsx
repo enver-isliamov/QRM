@@ -1,4 +1,6 @@
+import { useState, useEffect } from 'react'
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
+import { WifiOff } from 'lucide-react'
 import { useAuth } from './hooks/useAuth'
 import Layout from './components/Layout'
 import Home from './pages/Home'
@@ -34,9 +36,28 @@ function ProtectedRoute({ children, requireStaff = false }: { children: React.Re
 }
 
 export default function App() {
+  const [isOffline, setIsOffline] = useState(!navigator.onLine)
+
+  useEffect(() => {
+    const handleOnline = () => setIsOffline(false)
+    const handleOffline = () => setIsOffline(true)
+    window.addEventListener('online', handleOnline)
+    window.addEventListener('offline', handleOffline)
+    return () => {
+      window.removeEventListener('online', handleOnline)
+      window.removeEventListener('offline', handleOffline)
+    }
+  }, [])
+
   return (
     <Router>
       <YandexMetrika />
+      {isOffline && (
+        <div className="bg-rose-500 text-white px-4 py-2 flex items-center justify-center gap-2 text-sm font-medium sticky top-0 z-50">
+          <WifiOff className="w-4 h-4" />
+          Нет подключения к интернету
+        </div>
+      )}
       <Routes>
         <Route path="/login"         element={<Login />} />
         <Route path="/auth/callback" element={<AuthCallback />} />
