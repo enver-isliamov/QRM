@@ -61,14 +61,27 @@ export function useMeetings(userId?: string | null) {
 
   const updateMeeting = async (id: string, updates: Partial<MeetingRow>) => {
     const meeting = meetings.find(m => m.id === id)
-    console.log('Supabase: Updating meeting', id, 'with data:', updates);
-    const { data, error } = await supabase.from('meetings').update(updates).eq('id', id).select()
+    
+    // Очищаем данные от undefined и системных полей, которые нельзя обновлять
+    const cleanUpdates: any = {};
+    Object.entries(updates).forEach(([key, value]) => {
+      if (value !== undefined && !['attendees_count', 'subscribers_count', 'fund_progress', 'created_at', 'author'].includes(key)) {
+        cleanUpdates[key] = value;
+      }
+    });
+
+    console.log('Supabase: Updating meeting', id, 'with data:', cleanUpdates);
+    const { data, error } = await supabase.from('meetings').update(cleanUpdates).eq('id', id).select()
     
     console.log('Supabase Response:', { data, error });
     
-    if (error) console.error('Supabase: Update meeting error:', error);
-    if (!error) {
+    if (error) {
+      console.error('Supabase: Update meeting error:', error);
+      toast.error('Ошибка сохранения: ' + error.message);
+    } else {
+      toast.success('Данные успешно сохранены в базе');
       mutate('meetings')
+      mutate(`meeting_${id}`) // Обновляем кэш конкретной встречи
       
       const { data: subs } = await supabase.from('meeting_subscriptions').select('user_id').eq('meeting_id', id)
       if (subs && subs.length > 0) {
