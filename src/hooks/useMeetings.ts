@@ -62,7 +62,10 @@ export function useMeetings(userId?: string | null) {
   const updateMeeting = async (id: string, updates: Partial<MeetingRow>) => {
     const meeting = meetings.find(m => m.id === id)
     console.log('Supabase: Updating meeting', id, 'with data:', updates);
-    const { error } = await supabase.from('meetings').update(updates).eq('id', id)
+    const { data, error } = await supabase.from('meetings').update(updates).eq('id', id).select()
+    
+    console.log('Supabase Response:', { data, error });
+    
     if (error) console.error('Supabase: Update meeting error:', error);
     if (!error) {
       mutate('meetings')
