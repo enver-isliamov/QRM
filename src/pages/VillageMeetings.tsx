@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { MapPin, Calendar, Plus, X, Bell, Users, ChevronRight, Search } from 'lucide-react';
+import { MapPin, Calendar, Plus, X, Bell, Users, ChevronRight, Search, Heart } from 'lucide-react';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { useNavigate } from 'react-router-dom';
@@ -77,6 +77,14 @@ function VillageMeetings() {
             </div>
           )}
           {m.description && <p className="text-sm text-gray-500 line-clamp-2">{m.description}</p>}
+          
+          {m.fund_cloudtips_url && (
+            <div className="mt-2 flex items-center gap-1.5 text-xs font-medium text-blue-600 bg-blue-50 px-2 py-1 rounded-lg w-fit">
+              <Heart className="w-3 h-3 text-rose-500 fill-rose-500" />
+              <span>Сбор средств активен</span>
+            </div>
+          )}
+
           {progress != null && (
             <div className="mt-2">
               <div className="flex items-center justify-between text-xs mb-1">
@@ -131,6 +139,18 @@ function VillageMeetings() {
             }`}>
             {going ? '✓ Вы идёте' : 'Я ПОЕДУ'}
           </button>
+          {m.fund_cloudtips_url && (
+            <a
+              href={m.fund_cloudtips_url}
+              target="_blank"
+              rel="noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              className="flex items-center justify-center gap-1.5 px-4 py-2.5 bg-rose-500 text-white rounded-lg font-semibold text-sm hover:bg-rose-600 transition-colors"
+            >
+              <Heart className="w-4 h-4 fill-white" />
+              ПОМОЧЬ
+            </a>
+          )}
         </div>
       </div>
     );
