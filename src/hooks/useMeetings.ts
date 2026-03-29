@@ -102,7 +102,7 @@ export function useMeetings(userId?: string | null) {
 export function useMeetingDetail(id: string | undefined) {
   const { data, isLoading: loading } = useSWR(id ? `meeting_${id}` : null, async () => {
     const [mRes, pRes] = await Promise.all([
-      supabase.from('meetings_with_stats').select('*').eq('id', id!).single(),
+      supabase.from('meetings').select('*').eq('id', id!).single(),
       supabase.from('meeting_attendees')
         .select('user_id, profiles(id, name, avatar_url)')
         .eq('meeting_id', id!).limit(20),
