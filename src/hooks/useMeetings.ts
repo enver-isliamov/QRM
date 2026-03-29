@@ -51,15 +51,18 @@ export function useMeetings(userId?: string | null) {
   }
 
   const addMeeting = async (data: Partial<MeetingRow>, authorId: string) => {
+    console.log('Supabase: Adding meeting with data:', data);
     const { data: inserted, error } = await supabase
       .from('meetings').insert({ ...data, author_id: authorId }).select().single()
+    if (error) console.error('Supabase: Add meeting error:', error);
     if (inserted && !error) mutate('meetings')
     return { data: inserted, error }
   }
 
   const updateMeeting = async (id: string, updates: Partial<MeetingRow>) => {
-    const meeting = meetings.find(m => m.id === id)
+    console.log('Supabase: Updating meeting', id, 'with data:', updates);
     const { error } = await supabase.from('meetings').update(updates).eq('id', id)
+    if (error) console.error('Supabase: Update meeting error:', error);
     if (!error) {
       mutate('meetings')
       
