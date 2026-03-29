@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Users, Shield, Settings, BarChart3, ChevronLeft, Edit, Trash2, Plus, X, Check, Save, BookOpen, ToggleRight, ChevronRight, ArrowUp, ArrowDown } from 'lucide-react'
+import { Users, Shield, Settings, BarChart3, ChevronLeft, Edit, Trash2, Plus, X, Check, Save, BookOpen, ToggleRight, ChevronRight, ArrowUp, ArrowDown, Heart } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import { useStore } from '../store/useStore'
@@ -11,7 +11,7 @@ type Tab = 'stats' | 'users' | 'events' | 'help' | 'meetings' | 'rituals' | 'set
 type UserRow = { id: string; name: string; avatar_url?: string; role: string; provider: string; created_at: string }
 type EventRow = { id: string; event_date: string; title: string; title_crh?: string; description?: string; description_crh?: string; type: string }
 type HelpRow  = { id: string; title: string; type: string; urgency: string; status: string; location: string; created_at: string; responses_count?: number; author_id?: string }
-type MeetRow  = { id: string; village: string; organizer: string; meeting_date: string; status: string; attendees_count?: number }
+type MeetRow  = { id: string; village: string; organizer: string; meeting_date: string; status: string; attendees_count?: number; fund_cloudtips_url?: string }
 type RitualRow = { id: string; title: string; title_crh?: string; subtitle?: string; subtitle_crh?: string; icon?: string; sort_order?: number }
 type RitualStepRow = { id: number; ritual_id: string; step_order: number; title: string; title_crh?: string; description?: string; description_crh?: string }
 type ReportRow = { id: string; reporter_id: string; target_type: string; target_id: string; reason: string; description?: string; status: string; created_at: string }
