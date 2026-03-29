@@ -90,7 +90,9 @@ export default function Admin() {
       }
       if (t === 'meetings') {
         // Читаем напрямую из таблицы, так как VIEW может быть не обновлено
-        const { data } = await supabase.from('meetings').select('*').order('meeting_date', { ascending: false })
+        const { data, error } = await supabase.from('meetings').select('*').order('meeting_date', { ascending: false })
+        console.log('DEBUG: Raw Meetings from DB:', data);
+        if (error) console.error('DEBUG: Fetch error:', error);
         if (data) setMeetingList(data as MeetRow[])
       }
       if (t === 'rituals') {
