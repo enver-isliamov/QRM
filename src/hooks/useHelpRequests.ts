@@ -63,9 +63,19 @@ export function useHelpRequests() {
   }
 
   const updateRequest = async (requestId: string, updates: Partial<HelpRequestRow>) => {
+    // Удаляем вычисляемые поля, которые нельзя обновлять в таблице
+    const { responses_count, created_at, updated_at, author, ...cleanUpdates } = updates as any;
+    
+    console.log('Updating help_request:', requestId, cleanUpdates);
+    
     const { error } = await supabase.from('help_requests')
-      .update(updates)
+      .update(cleanUpdates)
       .eq('id', requestId)
+    
+    if (error) {
+      console.error('Supabase Update Error:', error);
+    }
+    
     if (!error) mutate('help_requests')
     return { error }
   }
