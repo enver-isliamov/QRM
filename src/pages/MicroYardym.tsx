@@ -123,17 +123,25 @@ function MicroYardym() {
   const handleAdd = async () => {
     if (!newReq.title || !newReq.location || !newReq.description) return;
     setSubmitting(true);
-    const initialStatus = featureToggles.preModeration ? 'pending' : 'active';
+    
+    // Если это редактирование, сохраняем текущий статус (обычно 'active'), 
+    // чтобы не срабатывал триггер модерации и не было ошибки базы
+    let targetStatus: any = featureToggles.preModeration ? 'pending' : 'active';
     
     if (editingId) {
-      const { error } = await updateRequest(editingId, { ...newReq, status: initialStatus });
+      const existing = requests.find(r => r.id === editingId);
+      if (existing?.status === 'active') targetStatus = 'active';
+    }
+
+    if (editingId) {
+      const { error } = await updateRequest(editingId, { ...newReq, status: targetStatus });
       if (error) {
         toast.error(error.message);
         setSubmitting(false);
         return;
       }
     } else {
-      const { error } = await addRequest({ ...newReq, status: initialStatus }, user?.id);
+      const { error } = await addRequest({ ...newReq, status: targetStatus }, user?.id);
       if (error) {
         toast.error(error.message);
         setSubmitting(false);
