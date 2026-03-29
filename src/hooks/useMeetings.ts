@@ -3,8 +3,9 @@ import { supabase, MeetingRow } from '../lib/supabase'
 
 export function useMeetings(userId?: string | null) {
   const { data: meetings = [], isLoading: loading } = useSWR('meetings', async () => {
+    // ВРЕМЕННО: Читаем напрямую из таблицы meetings, чтобы проверить сохранение ссылки
     const { data, error } = await supabase
-      .from('meetings_with_stats').select('*').eq('status', 'upcoming')
+      .from('meetings').select('*').eq('status', 'upcoming')
       .order('meeting_date', { ascending: true })
     if (error) throw error
     return data as MeetingRow[]
