@@ -1,6 +1,6 @@
 import useSWR from 'swr'
 import { supabase, EthnoEventRow } from '../lib/supabase'
-import { ethnoEvents as staticEvents } from '../data/ethnoCalendar'
+import { ethnoEvents as staticEvents } from '../store/data/ethnoCalendar'
 
 export function useEthnoEvents() {
   const { data: events = [], isLoading: loading } = useSWR('ethno_events', async () => {

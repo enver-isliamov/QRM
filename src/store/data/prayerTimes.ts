@@ -1,4 +1,4 @@
-import { DailyPrayers } from '../types';
+import { DailyPrayers } from '../../types';
 
 export const prayerTimes2026: Record<string, DailyPrayers> = {
   '2026-03-21': { date: '2026-03-21', fajr: '05:17', sunrise: '06:34', dhuhr: '12:55', asr: '16:15', maghrib: '19:06', isha: '20:23' },

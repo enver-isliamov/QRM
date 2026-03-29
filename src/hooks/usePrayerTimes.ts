@@ -1,6 +1,6 @@
 import useSWR, { mutate } from 'swr'
 import { supabase, PrayerTimeRow } from '../lib/supabase'
-import { prayerTimes2026 } from '../data/prayerTimes'
+import { prayerTimes2026 } from '../store/data/prayerTimes'
 import { format } from 'date-fns'
 
 export function usePrayerTimesForDate(date: Date) {

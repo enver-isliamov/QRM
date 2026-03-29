@@ -1,4 +1,4 @@
-import { EthnoEvent } from '../types';
+import { EthnoEvent } from '../../types';
 
 export const ethnoEvents: EthnoEvent[] = [
   {

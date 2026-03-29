@@ -6,7 +6,7 @@ import { ru } from 'date-fns/locale';
 const crh = ru; // date-fns doesn't have crh locale, using ru as fallback
 import { usePrayerTimesForDate, usePrayerCompletions } from '../hooks/usePrayerTimes';
 import { useAuth } from '../hooks/useAuth';
-import { prayerNames } from '../data/prayerTimes';
+import { prayerNames } from '../store/data/prayerTimes';
 
 function PrayerTimes() {
   const { t, i18n } = useTranslation();

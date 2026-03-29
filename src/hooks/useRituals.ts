@@ -1,6 +1,6 @@
 import useSWR from 'swr'
 import { supabase, RitualRow, RitualStepRow } from '../lib/supabase'
-import { rituals as staticRituals } from '../data/rituals'
+import { rituals as staticRituals } from '../store/data/rituals'
 
 export function useRituals() {
   const { data: rituals = [], isLoading: loading } = useSWR('rituals', async () => {

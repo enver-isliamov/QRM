@@ -7,7 +7,7 @@ import { useHelpRequests } from '../hooks/useHelpRequests'
 import { useMeetings } from '../hooks/useMeetings'
 import { useAuth } from '../hooks/useAuth'
 import { useStore } from '../store/useStore'
-import { prayerNames } from '../data/prayerTimes'
+import { prayerNames } from '../store/data/prayerTimes'
 import { format } from 'date-fns'
 import { ru } from 'date-fns/locale'
 const crh = ru // date-fns doesn't have crh locale, using ru as fallback
