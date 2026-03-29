@@ -591,6 +591,12 @@ export default function Admin() {
                   <div className="flex-1 min-w-0">
                     <p className="font-semibold text-gray-800 truncate">{m.village}</p>
                     <p className="text-sm text-gray-500">{m.organizer} · {new Date(m.meeting_date).toLocaleDateString('ru-RU')}</p>
+                    {m.fund_cloudtips_url && (
+                      <div className="mt-1.5 flex items-center gap-1 text-[10px] font-medium text-rose-600 bg-rose-50 px-1.5 py-0.5 rounded w-fit">
+                        <Heart className="w-2.5 h-2.5 fill-rose-600" />
+                        <span>CloudTips: {m.fund_cloudtips_url.slice(0, 20)}...</span>
+                      </div>
+                    )}
                   </div>
                   <div className="text-right ml-2 flex-shrink-0">
                     <span className={`text-xs px-2 py-0.5 rounded-full ${m.status === 'upcoming' ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-500'}`}>
