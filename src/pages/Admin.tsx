@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Users, Shield, Settings, BarChart3, ChevronLeft, Edit, Trash2, Plus, X, Check, Save, BookOpen, ToggleRight, ChevronRight, ArrowUp, ArrowDown } from 'lucide-react'
 import { supabase } from '../lib/supabase'
@@ -63,11 +63,11 @@ export default function Admin() {
     fetcher
   );
 
-  useEffect(() => { loadTab(tab) }, [tab])
+  useEffect(() => { loadTab(tab) }, [tab, loadTab])
 
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: string | number; type: 'event' | 'ritual' | 'step'; title: string } | null>(null)
 
-  const loadTab = async (t: Tab) => {
+  const loadTab = useCallback(async (t: Tab) => {
     setLoading(true)
     try {
       if (t === 'stats' && !isModerator) {
@@ -106,7 +106,7 @@ export default function Admin() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [isModerator])
 
   const logAudit = async (action: string, target_type: string, target_id: string) => {
     if (!profile) return
