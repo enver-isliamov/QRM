@@ -228,6 +228,7 @@ help_requests (
   location TEXT NOT NULL,
   description TEXT,
   contact_phone TEXT,
+  cloudtips_url TEXT,
   status TEXT DEFAULT 'active', -- 'active'|'pending'|'completed'|'cancelled'|'rejected'
   created_at TIMESTAMPTZ DEFAULT now(),
   updated_at TIMESTAMPTZ DEFAULT now()
