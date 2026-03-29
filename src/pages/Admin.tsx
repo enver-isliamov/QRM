@@ -89,7 +89,8 @@ export default function Admin() {
         if (auditData) setAuditLogs(auditData as AuditLogRow[])
       }
       if (t === 'meetings') {
-        const { data } = await supabase.from('meetings_with_stats').select('*').order('meeting_date', { ascending: false })
+        // Читаем напрямую из таблицы, так как VIEW может быть не обновлено
+        const { data } = await supabase.from('meetings').select('*').order('meeting_date', { ascending: false })
         if (data) setMeetingList(data as MeetRow[])
       }
       if (t === 'rituals') {
