@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { MapPin, Calendar, Plus, X, Bell, Users, ChevronRight, Search, Heart } from 'lucide-react';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
@@ -12,6 +12,13 @@ function VillageMeetings() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { meetings, loading, toggleAttend, toggleSubscribe, addMeeting, updateMeeting, isGoing, isSubscribed } = useMeetings(user?.id ?? null);
+
+  useEffect(() => {
+    if (meetings.length > 0) {
+      console.log('DEBUG: VillageMeetings - loaded meetings:', meetings.map(m => ({ village: m.village, url: m.fund_cloudtips_url })));
+    }
+  }, [meetings]);
+
   const [showAdd, setShowAdd] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
