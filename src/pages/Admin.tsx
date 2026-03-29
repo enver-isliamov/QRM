@@ -63,8 +63,6 @@ export default function Admin() {
     fetcher
   );
 
-  useEffect(() => { loadTab(tab) }, [tab, loadTab])
-
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: string | number; type: 'event' | 'ritual' | 'step'; title: string } | null>(null)
 
   const loadTab = useCallback(async (t: Tab) => {
@@ -107,6 +105,8 @@ export default function Admin() {
       setLoading(false)
     }
   }, [isModerator])
+
+  useEffect(() => { loadTab(tab) }, [tab, loadTab])
 
   const logAudit = async (action: string, target_type: string, target_id: string) => {
     if (!profile) return
