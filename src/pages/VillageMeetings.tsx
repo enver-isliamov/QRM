@@ -84,6 +84,10 @@ function VillageMeetings() {
               <span>Сбор средств активен</span>
             </div>
           )}
+          {/* ВРЕМЕННЫЙ ДЕБАГ: Если кнопка не видна, этот текст покажет почему */}
+          {!m.fund_cloudtips_url && (
+            <div className="hidden">DEBUG: No URL found for {m.village}</div>
+          )}
 
           {progress != null && (
             <div className="mt-2">
