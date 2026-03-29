@@ -37,7 +37,7 @@ CMS для Админа (Этап 13): Возможность управлять
 | `ethno_events` | table | календарь | ✅ |
 | `rituals` | table | обряды | ✅ |
 | `ritual_steps` | table | шаги обряда | ✅ |
-| `help_requests` | table | Микро-Ярдым | ✅ |
+| `help_requests` | table | Микро-Ярдым (с cloudtips_url) | ✅ |
 | `help_responses` | table | отклики | ✅ |
 | `help_request_comments` | table | комментарии | ✅ |
 | `reports` | table | жалобы | ✅ |
