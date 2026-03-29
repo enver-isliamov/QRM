@@ -1,5 +1,6 @@
 import useSWR, { mutate } from 'swr'
 import { supabase, MeetingRow } from '../lib/supabase'
+import { toast } from 'sonner'
 
 export function useMeetings(userId?: string | null) {
   const { data: meetings = [], isLoading: loading } = useSWR('meetings', async () => {
@@ -7,6 +8,7 @@ export function useMeetings(userId?: string | null) {
     const { data, error } = await supabase
       .from('meetings').select('*').eq('status', 'upcoming')
       .order('meeting_date', { ascending: true })
+    if (data) console.log('DEBUG: useMeetings - raw data:', data.map(m => ({ id: m.id, village: m.village, url: m.fund_cloudtips_url })));
     if (error) throw error
     return data as MeetingRow[]
   })
