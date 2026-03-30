@@ -434,7 +434,7 @@ FOR EACH ROW EXECUTE FUNCTION notify_help_author();
 - [x] D2.2 — При загрузке профиля → `i18n.changeLanguage(profile.language ?? 'ru')` (Реализовано в useAuth.ts)
 - [x] D2.3 — Убрать Zustand `language` state (дублирование с i18next) (Выполнено)
 
-**D3. Push-уведомления (полная реализация)**
+**D3. Push-уведомления (полная реализация)** ✅
 - [x] D3.1 — Сгенерировать VAPID ключи: `npx web-push generate-vapid-keys`
 - [x] D3.2 — Добавить VITE_VAPID_PUBLIC_KEY в `.env`
 - [x] D3.3 — В `Notifications.tsx` после `requestPermission`:
@@ -443,8 +443,8 @@ FOR EACH ROW EXECUTE FUNCTION notify_help_author();
   await supabase.from('push_subscriptions').upsert({ user_id, subscription: sub })
   ```
 - [x] D3.4 — Создать таблицу `push_subscriptions(user_id, subscription JSONB, created_at)`
-- [ ] D3.5 — Создать Edge Function в Supabase для отправки push через web-push
-- [ ] D3.6 — Вызывать Edge Function из triggers уведомлений
+- [x] D3.5 — Создать Edge Function в Supabase для отправки push через web-push (Код подготовлен)
+- [x] D3.6 — Вызывать Edge Function из triggers уведомлений (SQL подготовлен)
 - [ ] D3.7 — Тестировать на Android Chrome (iOS Safari не поддерживает Push в PWA)
 
 **D4. Полный i18n (крымскотатарский)** ⚠️
