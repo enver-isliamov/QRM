@@ -43,9 +43,15 @@ export default function Notifications() {
   }, [])
 
   const requestPushPermission = async () => {
+    // 0. Проверка на HTTPS
+    if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost') {
+      toast.error('Push-уведомления работают только через защищенное соединение (HTTPS)');
+      return;
+    }
+
     if (!('Notification' in window) || !('serviceWorker' in navigator)) {
-      alert('Ваш браузер не поддерживает Push-уведомления')
-      return
+      toast.error('Ваш браузер не поддерживает Push-уведомления');
+      return;
     }
 
     setIsSubscribing(true)
