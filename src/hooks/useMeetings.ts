@@ -4,11 +4,11 @@ import { toast } from 'sonner'
 
 export function useMeetings(userId?: string | null) {
   const { data: meetings = [], isLoading: loading } = useSWR('meetings', async () => {
-    // ВРЕМЕННО: Читаем напрямую из таблицы meetings, чтобы проверить сохранение ссылки
+    // Используем VIEW meetings_with_stats для получения вычисляемых полей
     const { data, error } = await supabase
-      .from('meetings').select('*').eq('status', 'upcoming')
+      .from('meetings_with_stats').select('*').eq('status', 'upcoming')
       .order('meeting_date', { ascending: true })
-    if (data) console.log('DEBUG: useMeetings - raw data:', data.map(m => ({ id: m.id, village: m.village, url: m.fund_cloudtips_url })));
+    if (data) console.log('DEBUG: useMeetings - data from view:', data.map(m => ({ id: m.id, village: m.village, url: m.fund_cloudtips_url })));
     if (error) throw error
     return data as MeetingRow[]
   })
@@ -120,7 +120,7 @@ export function useMeetings(userId?: string | null) {
 export function useMeetingDetail(id: string | undefined) {
   const { data, isLoading: loading } = useSWR(id ? `meeting_${id}` : null, async () => {
     const [mRes, pRes] = await Promise.all([
-      supabase.from('meetings').select('*').eq('id', id!).single(),
+      supabase.from('meetings_with_stats').select('*').eq('id', id!).single(),
       supabase.from('meeting_attendees')
         .select('user_id, profiles(id, name, avatar_url)')
         .eq('meeting_id', id!).limit(20),

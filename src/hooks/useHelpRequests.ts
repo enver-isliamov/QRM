@@ -64,7 +64,11 @@ export function useHelpRequests() {
 
   const updateRequest = async (requestId: string, updates: Partial<HelpRequestRow>) => {
     // Удаляем вычисляемые поля, которые нельзя обновлять в таблице
-    const { responses_count, created_at, updated_at, author, ...cleanUpdates } = updates as any;
+    const cleanUpdates = { ...updates } as any;
+    delete cleanUpdates.responses_count;
+    delete cleanUpdates.created_at;
+    delete cleanUpdates.updated_at;
+    delete cleanUpdates.author;
     
     console.log('Updating help_request:', requestId, cleanUpdates);
     

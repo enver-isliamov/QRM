@@ -10,8 +10,8 @@ import { toast } from 'sonner'
 type Tab = 'stats' | 'users' | 'events' | 'help' | 'meetings' | 'rituals' | 'settings' | 'moderation'
 type UserRow = { id: string; name: string; avatar_url?: string; role: string; provider: string; created_at: string }
 type EventRow = { id: string; event_date: string; title: string; title_crh?: string; description?: string; description_crh?: string; type: string }
-type HelpRow  = { id: string; title: string; type: string; urgency: string; status: string; location: string; created_at: string; responses_count?: number; author_id?: string }
-type MeetRow  = { id: string; village: string; organizer: string; meeting_date: string; status: string; attendees_count?: number; fund_cloudtips_url?: string }
+type HelpRow  = { id: string; title: string; type: string; urgency: string; status: string; location: string; created_at: string; responses_count?: number; author_id?: string; cloudtips_url?: string }
+type MeetRow  = { id: string; village: string; organizer: string; meeting_date: string; status: string; attendees_count?: number; fund_cloudtips_url?: string; fund_goal?: number }
 type RitualRow = { id: string; title: string; title_crh?: string; subtitle?: string; subtitle_crh?: string; icon?: string; sort_order?: number }
 type RitualStepRow = { id: number; ritual_id: string; step_order: number; title: string; title_crh?: string; description?: string; description_crh?: string }
 type ReportRow = { id: string; reporter_id: string; target_type: string; target_id: string; reason: string; description?: string; status: string; created_at: string }
@@ -89,9 +89,9 @@ export default function Admin() {
         if (auditData) setAuditLogs(auditData as AuditLogRow[])
       }
       if (t === 'meetings') {
-        // Читаем напрямую из таблицы, так как VIEW может быть не обновлено
-        const { data, error } = await supabase.from('meetings').select('*').order('meeting_date', { ascending: false })
-        console.log('DEBUG: Raw Meetings from DB:', data);
+        // Используем VIEW meetings_with_stats для получения вычисляемых полей
+        const { data, error } = await supabase.from('meetings_with_stats').select('*').order('meeting_date', { ascending: false })
+        console.log('DEBUG: Meetings from view:', data);
         if (error) console.error('DEBUG: Fetch error:', error);
         if (data) setMeetingList(data as MeetRow[])
       }
