@@ -19,11 +19,14 @@ export function useAuth() {
   })
 
   useEffect(() => {
+    console.log('Auth: Initializing session check...')
     supabase.auth.getSession().then(({ data: { session } }) => {
+      console.log('Auth: Session retrieved:', session ? 'User logged in' : 'No session')
       setSession(session); setUser(session?.user ?? null)
       setAuthLoading(false)
     })
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log('Auth: State changed:', event, session ? 'User logged in' : 'No session')
       setSession(session); setUser(session?.user ?? null)
       setAuthLoading(false)
     })

@@ -19,12 +19,14 @@ import { useTranslation } from 'react-i18next'
 export default function Home() {
   const navigate = useNavigate()
   const { t, i18n } = useTranslation()
-  const { user, profile } = useAuth()
+  const { user, profile, loading: authLoading } = useAuth()
+  console.log('Home: Auth state:', { user: user?.id, authLoading });
   const { featureToggles } = useStore()
   const { upcoming, loading: eventsLoading } = useEthnoEvents()
   const { prayers, loading: prayersLoading } = usePrayerTimesForDate(new Date())
   const { currentPrayer, nextPrayer, timeRemaining } = useNextPrayer()
-  const { completed } = usePrayerCompletions(user?.id ?? null, new Date())
+  const { completed, loading: completionsLoading } = usePrayerCompletions(user?.id ?? null, new Date())
+  console.log('Home: Completions state:', { completed, completionsLoading });
   const { urgent, loading: helpLoading } = useHelpRequests()
   const { meetings, loading: meetingsLoading } = useMeetings(user?.id)
 
@@ -33,6 +35,7 @@ export default function Home() {
   const upcomingMeeting = useMemo(() => meetings[0], [meetings])
 
   const isLoading = eventsLoading || prayersLoading || helpLoading || meetingsLoading
+  console.log('Home: Loading states:', { eventsLoading, prayersLoading, helpLoading, meetingsLoading, isLoading });
 
   const dateLocale = i18n.language === 'crh' ? crh : ru
 

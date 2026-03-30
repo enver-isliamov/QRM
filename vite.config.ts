@@ -24,4 +24,12 @@ export default defineConfig({
       workbox: { globPatterns: ['**/*.{js,css,html,ico,png,svg}'] },
     }),
   ],
+  server: {
+    port: 3000,
+    host: '0.0.0.0',
+    hmr: process.env.DISABLE_HMR === 'true' ? false : {
+      protocol: 'wss',
+      clientPort: 443,
+    },
+  },
 })

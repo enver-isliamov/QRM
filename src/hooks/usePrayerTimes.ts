@@ -28,11 +28,18 @@ export function usePrayerTimesForDate(date: Date) {
 
 export function usePrayerCompletions(userId: string | null, date: Date) {
   const dateStr = format(date, 'yyyy-MM-dd')
-  const { data: completed = [], isLoading: loading } = useSWR(userId ? `completions_${userId}_${dateStr}` : null, async () => {
+  const { data: completed = [], isLoading: loading, error } = useSWR(userId ? `completions_${userId}_${dateStr}` : null, async () => {
+    console.log('Fetching completions for:', userId, dateStr)
     const { data, error } = await supabase.from('prayer_completions').select('prayer_key').eq('user_id', userId!).eq('date', dateStr)
-    if (error) throw error
+    if (error) {
+      console.error('Error fetching completions:', error)
+      throw error
+    }
+    console.log('Completions fetched:', data)
     return data?.map(r => r.prayer_key) ?? []
   })
+
+  if (error) console.error('SWR Error in usePrayerCompletions:', error)
 
   const toggle = async (prayerKey: string) => {
     if (!userId) return
