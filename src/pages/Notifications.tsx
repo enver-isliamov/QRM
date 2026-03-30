@@ -1,10 +1,28 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Bell, ChevronRight, CheckCheck, BellRing } from 'lucide-react'
+import { Bell, ChevronRight, CheckCheck, BellRing, Loader2 } from 'lucide-react'
 import { format } from 'date-fns'
 import { ru } from 'date-fns/locale'
 import { useNotifications } from '../hooks/useNotifications'
 import { useAuth } from '../hooks/useAuth'
+import { supabase } from '../lib/supabase'
+
+const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY || 'BD6HcwhDmsVV41he4vOhZ9L6MI8qGQR5ZDRxTJpJN_cogqm0VFeMH0pekjQw24AHXZGYpV1U9dA-mzydQXxgznA'
+
+function urlBase64ToUint8Array(base64String: string) {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding)
+    .replace(/-/g, '+')
+    .replace(/_/g, '/');
+
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
+}
 
 const typeIcon: Record<string, string> = {
   meeting_update: '📅', meeting_date_set: '🔔',
@@ -16,6 +34,7 @@ export default function Notifications() {
   const { user } = useAuth()
   const { notifications, unreadCount, markRead, markAllRead } = useNotifications(user?.id ?? null)
   const [pushPermission, setPushPermission] = useState<NotificationPermission>('default')
+  const [isSubscribing, setIsSubscribing] = useState(false)
 
   useEffect(() => {
     if ('Notification' in window) {
@@ -24,21 +43,48 @@ export default function Notifications() {
   }, [])
 
   const requestPushPermission = async () => {
-    if (!('Notification' in window)) {
+    if (!('Notification' in window) || !('serviceWorker' in navigator)) {
       alert('Ваш браузер не поддерживает Push-уведомления')
       return
     }
+
+    setIsSubscribing(true)
     try {
       const perm = await Notification.requestPermission()
       setPushPermission(perm)
+      
       if (perm === 'granted') {
-        // In a real app, we would subscribe to pushManager and send the subscription to the backend here
+        const registration = await navigator.serviceWorker.ready;
+        
+        // Проверяем существующую подписку
+        let subscription = await registration.pushManager.getSubscription();
+        
+        if (!subscription) {
+          subscription = await registration.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+          });
+        }
+
+        // Сохраняем в Supabase
+        const { error } = await supabase
+          .from('push_subscriptions')
+          .upsert({
+            user_id: user?.id,
+            subscription: subscription.toJSON()
+          }, { onConflict: 'user_id, subscription' });
+
+        if (error) throw error;
+        
         alert('Push-уведомления успешно включены!')
       } else {
         alert('Вы отклонили запрос на отправку уведомлений.')
       }
     } catch (error) {
       console.error('Error requesting push permission:', error)
+      alert('Ошибка при настройке уведомлений. Попробуйте позже.')
+    } finally {
+      setIsSubscribing(false)
     }
   }
 
@@ -85,8 +131,18 @@ export default function Notifications() {
               <p className="text-xs text-blue-700 mt-0.5 mb-2 leading-relaxed">
                 Получайте важные уведомления, даже когда приложение закрыто.
               </p>
-              <button onClick={requestPushPermission} className="bg-blue-600 text-white text-xs font-semibold px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors touch-feedback">
-                Включить
+              <button 
+                onClick={requestPushPermission} 
+                disabled={isSubscribing}
+                className="bg-blue-600 text-white text-xs font-semibold px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors touch-feedback flex items-center gap-2 disabled:opacity-50">
+                {isSubscribing ? (
+                  <>
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                    <span>Настройка...</span>
+                  </>
+                ) : (
+                  <span>Включить</span>
+                )}
               </button>
             </div>
           </div>
