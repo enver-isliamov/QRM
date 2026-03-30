@@ -6,7 +6,14 @@ const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string
 export const supabase = createClient(
   SUPABASE_URL || 'https://placeholder.supabase.co',
   SUPABASE_ANON_KEY || 'placeholder',
-  { auth: { autoRefreshToken: true, persistSession: true, detectSessionInUrl: true } }
+  { 
+    auth: { autoRefreshToken: true, persistSession: true, detectSessionInUrl: true },
+    realtime: {
+      params: {
+        eventsPerSecond: 10
+      }
+    }
+  }
 )
 
 export type Profile = {
