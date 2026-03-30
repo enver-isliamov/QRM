@@ -159,7 +159,7 @@ CMS для Админа (Этап 13): Возможность управлять
 | 7.5 | «Я ПОЕДУ» / отмена | Toggle attendance | Работает | ✅ |
 | 7.6 | Подписаться на уведомления | INSERT `meeting_subscriptions` | Работает | ✅ |
 | 7.7 | Получить уведомление при подтверждении даты | Trigger в БД | Работает (клиентская часть) | ✅ |
-| 7.8 | Прогресс сбора средств | `fund_progress` из VIEW | Работает | ✅ |
+| 7.8 | Прогресс сбора средств | `fund_progress` из VIEW (на базе `fund_goal`) | Работает | ✅ |
 | 7.9 | Кнопка CloudTips: копировать ссылку | Clipboard API | Работает | ✅ |
 | 7.10 | Кнопка CloudTips: перейти | `window.open` | Работает | ✅ |
 | 7.11 | Bell (подписка) только если нет `meeting_time` | Условная логика | Работает | ✅ |
@@ -172,7 +172,7 @@ CMS для Админа (Этап 13): Возможность управлять
 | 8.1 | Создать встречу (форма) | Модалка с полями | Работает | ✅ |
 | 8.2 | Кнопка «Изменить» в детальной | Только автор/admin | Работает | ✅ |
 | 8.3 | `/meetings/:id/edit` — полная форма | Все поля встречи | Работает | ✅ |
-| 8.4 | Обновить сумму сбора / CloudTips | Patch `fund_current`, `fund_cloudtips_url` | Работает через editingFund modal | ✅ |
+| 8.4 | Обновить сумму сбора / CloudTips | Patch `fund_current`, `fund_cloudtips_url`, `fund_goal` | Работает через editingFund modal | ✅ |
 | 8.5 | Участники получают уведомление при изменении | Trigger в БД при UPDATE meetings | Работает (клиентская часть) | ✅ |
 | 8.6 | Удалить встречу | Только admin | Работает (в MeetingEdit) | ✅ |
 | 8.7 | Статус встречи (upcoming/completed/cancelled) | Select в форме | Работает | ✅ |
@@ -315,8 +315,8 @@ CMS для Админа (Этап 13): Возможность управлять
 - [x] A1.6 — Проверить что `meeting_subscriptions` существует с колонками `(meeting_id, user_id, created_at)`
 - [x] A1.7 — Проверить `user_notifications` с колонками: `(id, user_id, type, title, body, link, is_read, created_at)`
 - [x] A1.8 — Создать/проверить `admin_stats` VIEW
-- [x] A1.9 — Создать/проверить `help_requests_with_count` VIEW с полем `responses_count`
-- [x] A1.10 — Создать/проверить `meetings_with_stats` VIEW с `attendees_count`, `subscribers_count`, `fund_progress`
+- [x] A1.9 — Создать/проверить `help_requests_with_count` VIEW с полем `responses_count` и `cloudtips_url`
+- [x] A1.10 — Создать/проверить `meetings_with_stats` VIEW с `attendees_count`, `subscribers_count`, `fund_progress` (используя `fund_goal`)
 
 **A2. Настроить RLS**
 - [x] A2.1 — `profiles`: SELECT all (public), UPDATE own, INSERT auth trigger (Миграция 20260328_rls.sql)
@@ -404,15 +404,16 @@ FOR EACH ROW EXECUTE FUNCTION notify_help_author();
   VITE_SUPABASE_URL=https://xxx.supabase.co
   VITE_SUPABASE_ANON_KEY=eyJ...
   VITE_SUPPORT_URL=https://pay.cloudtips.ru/p/8a27e9ab
+  VITE_VAPID_PUBLIC_KEY=BD6HcwhDmsVV41he4vOhZ9L6MI8qGQR5ZDRxTJpJN_cogqm0VFeMH0pekjQw24AHXZGYpV1U9dA-mzydQXxgznA
   ```
 - [x] C1.2 — Убедиться что `.env.local` в `.gitignore`
-- [ ] C1.3 — Проверить Vercel Environment Variables: все три переменные установлены
+- [x] C1.3 — Проверить Vercel Environment Variables: все три переменные установлены
 
 **C2. Auth настройки в Supabase Dashboard**
-- [ ] C2.1 — Email: включить Magic Link, установить redirect URL `https://orazaru.vercel.app/auth/callback`
-- [ ] C2.2 — Google: включить OAuth, добавить Client ID + Secret, Redirect URL
-- [ ] C2.3 — Site URL: установить `https://orazaru.vercel.app`
-- [ ] C2.4 — Проверить шаблон письма Magic Link (русский текст)
+- [x] C2.1 — Email: включить Magic Link, установить redirect URL `https://orazaru.vercel.app/auth/callback`
+- [x] C2.2 — Google: включить OAuth, добавить Client ID + Secret, Redirect URL
+- [x] C2.3 — Site URL: установить `https://orazaru.vercel.app`
+- [x] C2.4 — Проверить шаблон письма Magic Link (русский текст)
 
 **C3. Storage (если потребуются аватары)**
 - [x] C3.1 — Создать bucket `avatars` в Supabase Storage
@@ -434,14 +435,14 @@ FOR EACH ROW EXECUTE FUNCTION notify_help_author();
 - [x] D2.3 — Убрать Zustand `language` state (дублирование с i18next) (Выполнено)
 
 **D3. Push-уведомления (полная реализация)**
-- [ ] D3.1 — Сгенерировать VAPID ключи: `npx web-push generate-vapid-keys`
-- [ ] D3.2 — Добавить VITE_VAPID_PUBLIC_KEY в `.env`
-- [ ] D3.3 — В `Notifications.tsx` после `requestPermission`:
+- [x] D3.1 — Сгенерировать VAPID ключи: `npx web-push generate-vapid-keys`
+- [x] D3.2 — Добавить VITE_VAPID_PUBLIC_KEY в `.env`
+- [x] D3.3 — В `Notifications.tsx` после `requestPermission`:
   ```js
   const sub = await sw.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: VAPID_PUBLIC })
   await supabase.from('push_subscriptions').upsert({ user_id, subscription: sub })
   ```
-- [ ] D3.4 — Создать таблицу `push_subscriptions(user_id, subscription JSONB, created_at)`
+- [x] D3.4 — Создать таблицу `push_subscriptions(user_id, subscription JSONB, created_at)`
 - [ ] D3.5 — Создать Edge Function в Supabase для отправки push через web-push
 - [ ] D3.6 — Вызывать Edge Function из triggers уведомлений
 - [ ] D3.7 — Тестировать на Android Chrome (iOS Safari не поддерживает Push в PWA)
