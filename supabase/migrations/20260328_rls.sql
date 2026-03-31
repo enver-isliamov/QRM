@@ -81,6 +81,10 @@ DROP POLICY IF EXISTS "Users can update their own notifications" ON user_notific
 CREATE POLICY "Users can update their own notifications" ON user_notifications 
 FOR UPDATE USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can delete their own notifications" ON user_notifications;
+CREATE POLICY "Users can delete their own notifications" ON user_notifications 
+FOR DELETE USING (auth.uid() = user_id);
+
 -- 7. Таблица audit_logs
 ALTER TABLE audit_logs ENABLE ROW LEVEL SECURITY;
 

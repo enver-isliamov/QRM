@@ -43,7 +43,14 @@ export function useNotifications(userId: string | null) {
     if (!error) mutate(`notifications_${userId}`)
   }
 
+  const clearRead = async () => {
+    if (!userId) return
+    const { error } = await supabase.from('user_notifications').delete()
+      .eq('user_id', userId).eq('is_read', true)
+    if (!error) mutate(`notifications_${userId}`)
+  }
+
   const unreadCount = notifications.filter(n => !n.is_read).length
 
-  return { notifications, unreadCount, markRead, markAllRead, loading }
+  return { notifications, unreadCount, markRead, markAllRead, clearRead, loading }
 }

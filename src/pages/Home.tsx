@@ -25,7 +25,7 @@ export default function Home() {
   const { upcoming, loading: eventsLoading } = useEthnoEvents()
   const { prayers, loading: prayersLoading } = usePrayerTimesForDate(new Date())
   const { currentPrayer, nextPrayer, timeRemaining } = useNextPrayer()
-  const { completed, loading: completionsLoading } = usePrayerCompletions(user?.id ?? null, new Date())
+  const { completed, toggle, loading: completionsLoading } = usePrayerCompletions(user?.id ?? null, new Date())
   console.log('Home: Completions state:', { completed, completionsLoading });
   const { urgent, loading: helpLoading } = useHelpRequests()
   const { meetings, loading: meetingsLoading } = useMeetings(user?.id)
@@ -121,7 +121,10 @@ export default function Home() {
                     const isCurrent = currentPrayer?.key === prayer.key;
                     const isCompleted = completed.includes(prayer.key);
                     return (
-                      <div key={prayer.key} className={`rounded-xl p-2.5 text-center transition-all relative ${isCurrent ? 'bg-white/30 ring-1 ring-white/50 scale-105 z-10' : 'bg-white/15'}`}>
+                      <button 
+                        key={prayer.key} 
+                        onClick={(e) => { e.stopPropagation(); toggle(prayer.key); }}
+                        className={`rounded-xl p-2.5 text-center transition-all relative ${isCurrent ? 'bg-white/30 ring-1 ring-white/50 scale-105 z-10' : 'bg-white/15'}`}>
                         {isCompleted && (
                           <div className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-emerald-400 rounded-full border-2 border-emerald-600 flex items-center justify-center shadow-sm">
                             <Check className="w-3 h-3 text-white" />
@@ -129,7 +132,7 @@ export default function Home() {
                         )}
                         <div className="text-[10px] uppercase tracking-wider opacity-70 mb-1 font-bold">{prayer.name}</div>
                         <div className="text-lg font-bold">{(prayers as any)[prayer.key]}</div>
-                      </div>
+                      </button>
                     );
                   })}
                 </div>
