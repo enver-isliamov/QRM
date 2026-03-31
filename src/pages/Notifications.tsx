@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Bell, ChevronRight, CheckCheck, BellRing, Loader2, Trash2, Info, Share } from 'lucide-react'
+import { Bell, ChevronRight, CheckCheck, BellRing, Loader2, Trash2, Share } from 'lucide-react'
 import { toast } from 'sonner'
 import { format } from 'date-fns'
 import { ru } from 'date-fns/locale'
@@ -254,7 +254,7 @@ export default function Notifications() {
                     
                     {group.items.length > 1 ? (
                       <div className="mt-2 space-y-2">
-                        {group.items.slice(0, 3).map((item, idx) => (
+                        {group.items.slice(0, 3).map((item) => (
                           <div key={item.id} className="flex items-start gap-2">
                             <div className="w-1 h-1 bg-gray-300 rounded-full mt-1.5 flex-shrink-0" />
                             <p className="text-xs text-gray-500 line-clamp-1">{item.body || 'Без описания'}</p>
