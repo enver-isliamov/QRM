@@ -41,8 +41,13 @@ function MicroYardym() {
   const [showCommentsModal, setShowCommentsModal] = useState<HelpRequestRow | null>(null);
   const [showReportModal, setShowReportModal] = useState<{ type: 'help_request' | 'comment', id: string } | null>(null);
   const [reportReason, setReportReason] = useState('');
-  const [comments, setComments] = useState<HelpRequestCommentRow[]>([]);
+  const [comments, setComments] = useState<(HelpRequestCommentRow & { author: { name: string, avatar_url: string, role: string, username: string | null } })[]>([]);
   const [newComment, setNewComment] = useState('');
+  const [replyTo, setReplyTo] = useState<string | null>(null);
+  const [mentionSearch, setMentionSearch] = useState('');
+  const [mentionSuggestions, setMentionSuggestions] = useState<{ id: string, name: string, username: string | null, avatar_url: string | null }[]>([]);
+  const [showMentions, setShowMentions] = useState(false);
+  const [mentionIndex, setMentionIndex] = useState(-1);
   const [loadingComments, setLoadingComments] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   // IDs обращений на которые текущий юзер уже откликнулся (из БД)
@@ -68,8 +73,8 @@ function MicroYardym() {
       const { data, error } = await supabase
         .from('help_request_comments')
         .select(`
-          id, request_id, author_id, content, created_at,
-          author:profiles!help_request_comments_author_id_fkey(name, avatar_url, role)
+          id, request_id, author_id, content, created_at, parent_id,
+          author:profiles!help_request_comments_author_id_fkey(name, avatar_url, role, username)
         `)
         .eq('request_id', showCommentsModal.id)
         .order('created_at', { ascending: true });
@@ -80,7 +85,98 @@ function MicroYardym() {
       setLoadingComments(false);
     };
     fetchComments();
+
+    // Real-time subscription
+    const channel = supabase
+      .channel(`help_comments_${showCommentsModal.id}`)
+      .on('postgres_changes', { 
+        event: 'INSERT', 
+        schema: 'public', 
+        table: 'help_request_comments',
+        filter: `request_id=eq.${showCommentsModal.id}`
+      }, async (payload) => {
+        // Fetch the full comment with author details
+        const { data, error } = await supabase
+          .from('help_request_comments')
+          .select(`
+            id, request_id, author_id, content, created_at, parent_id,
+            author:profiles!help_request_comments_author_id_fkey(name, avatar_url, role, username)
+          `)
+          .eq('id', payload.new.id)
+          .single();
+        
+        if (data && !error) {
+          setComments(prev => {
+            if (prev.some(c => c.id === data.id)) return prev;
+            return [...prev, data as any];
+          });
+        }
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [showCommentsModal]);
+
+  useEffect(() => {
+    if (!mentionSearch || mentionSearch.length < 2) {
+      setMentionSuggestions([]);
+      setShowMentions(false);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      const { data } = await supabase
+        .from('profiles')
+        .select('id, name, username, avatar_url')
+        .or(`username.ilike.%${mentionSearch}%,name.ilike.%${mentionSearch}%`)
+        .limit(5);
+      
+      if (data) {
+        setMentionSuggestions(data);
+        setShowMentions(data.length > 0);
+      }
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [mentionSearch]);
+
+  const handleCommentChange = (val: string) => {
+    setNewComment(val);
+    
+    // Detect @mention
+    const cursorPosition = (document.activeElement as HTMLTextAreaElement)?.selectionStart || 0;
+    const textBeforeCursor = val.slice(0, cursorPosition);
+    const lastAtSymbol = textBeforeCursor.lastIndexOf('@');
+    
+    if (lastAtSymbol !== -1) {
+      const query = textBeforeCursor.slice(lastAtSymbol + 1);
+      // Only trigger if there's no space between @ and cursor
+      if (!query.includes(' ')) {
+        setMentionSearch(query);
+        return;
+      }
+    }
+    
+    setMentionSearch('');
+    setShowMentions(false);
+  };
+
+  const insertMention = (user: { username: string | null, name: string }) => {
+    const cursorPosition = (document.activeElement as HTMLTextAreaElement)?.selectionStart || 0;
+    const textBeforeCursor = newComment.slice(0, cursorPosition);
+    const textAfterCursor = newComment.slice(cursorPosition);
+    const lastAtSymbol = textBeforeCursor.lastIndexOf('@');
+    
+    const username = user.username || user.name.replace(/\s+/g, '_').toLowerCase();
+    const newText = textBeforeCursor.slice(0, lastAtSymbol) + `@${username} ` + textAfterCursor;
+    
+    setNewComment(newText);
+    setMentionSearch('');
+    setShowMentions(false);
+    // Focus back to textarea would be nice but requires a ref
+  };
 
   const handleAddComment = async () => {
     if (!newComment.trim() || !user || !showCommentsModal) return;
@@ -89,18 +185,22 @@ function MicroYardym() {
       .insert({
         request_id: showCommentsModal.id,
         author_id: user.id,
-        content: newComment.trim()
+        content: newComment.trim(),
+        parent_id: replyTo
       })
       .select(`
-        id, request_id, author_id, content, created_at,
-        author:profiles!help_request_comments_author_id_fkey(name, avatar_url, role)
+        id, request_id, author_id, content, created_at, parent_id,
+        author:profiles!help_request_comments_author_id_fkey(name, avatar_url, role, username)
       `)
       .single();
     
     if (data && !error) {
       setComments(prev => [...prev, data as any]);
       setNewComment('');
-      if (showCommentsModal.author_id && showCommentsModal.author_id !== user.id) {
+      setReplyTo(null);
+      
+      // Notify author of the request if it's not a reply and not the author themselves
+      if (!replyTo && showCommentsModal.author_id && showCommentsModal.author_id !== user.id) {
         await supabase.from('user_notifications').insert({
           user_id: showCommentsModal.author_id,
           type: 'help_response',
@@ -108,6 +208,20 @@ function MicroYardym() {
           body: `${t('yardym.new_comment_notification')}: "${showCommentsModal.title}"`,
           link: `/yardym/${showCommentsModal.id}`
         });
+      }
+
+      // If it's a reply, notify the parent comment author
+      if (replyTo) {
+        const parentComment = comments.find(c => c.id === replyTo);
+        if (parentComment && parentComment.author_id !== user.id) {
+          await supabase.from('user_notifications').insert({
+            user_id: parentComment.author_id,
+            type: 'system',
+            title: 'Новый ответ на ваш комментарий',
+            body: `Вам ответили в обсуждении: "${showCommentsModal.title}"`,
+            link: `/yardym/${showCommentsModal.id}`
+          });
+        }
       }
     }
   };
@@ -547,72 +661,230 @@ function MicroYardym() {
                   <p className="text-sm text-gray-400 mt-1">{t('yardym.no_comments_desc')}</p>
                 </div>
               ) : (
-                comments.map(comment => (
-                  <div key={comment.id} className={`flex gap-3 ${comment.author_id === user?.id ? 'flex-row-reverse' : ''}`}>
-                    <button 
-                      onClick={() => navigate(`/user/${comment.author_id}`)}
-                      className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0 overflow-hidden hover:opacity-80 transition-opacity"
-                    >
-                      {comment.author?.avatar_url ? (
-                        <img src={comment.author.avatar_url} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                      ) : (
-                        <span className="text-emerald-700 font-medium text-sm">
-                          {(comment.author?.name || 'U')[0].toUpperCase()}
-                        </span>
-                      )}
-                    </button>
-                    <div className={`max-w-[80%] rounded-2xl px-4 py-2 relative group ${
-                      comment.author_id === user?.id 
-                        ? 'bg-emerald-500 text-white rounded-tr-sm' 
-                        : 'bg-white border border-gray-100 text-gray-800 rounded-tl-sm shadow-sm'
-                    }`}>
-                      {comment.author_id !== user?.id && (
-                        <div className="flex items-center justify-between mb-1">
-                          <button 
-                            onClick={() => navigate(`/user/${comment.author_id}`)}
-                            className="text-xs font-medium text-emerald-600 hover:underline"
-                          >
-                            {comment.author?.name || t('auth.user')}
-                          </button>
-                          <button 
-                            onClick={() => setShowReportModal({ type: 'comment', id: comment.id })}
-                            className="text-gray-300 hover:text-rose-500 transition-colors opacity-0 group-hover:opacity-100">
-                            <Flag className="w-3 h-3" />
-                          </button>
+                <div className="space-y-4">
+                  {comments.filter(c => !c.parent_id).map(comment => (
+                    <div key={comment.id} className="space-y-3">
+                      <div className={`flex gap-3 ${comment.author_id === user?.id ? 'flex-row-reverse' : ''}`}>
+                        <button 
+                          onClick={() => navigate(`/user/${comment.author_id}`)}
+                          className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0 overflow-hidden hover:opacity-80 transition-opacity"
+                        >
+                          {comment.author?.avatar_url ? (
+                            <img src={comment.author.avatar_url} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                          ) : (
+                            <span className="text-emerald-700 font-medium text-sm">
+                              {(comment.author?.name || 'U')[0].toUpperCase()}
+                            </span>
+                          )}
+                        </button>
+                        <div className={`max-w-[80%] rounded-2xl px-4 py-2 relative group ${
+                          comment.author_id === user?.id 
+                            ? 'bg-emerald-500 text-white rounded-tr-sm' 
+                            : 'bg-white border border-gray-100 text-gray-800 rounded-tl-sm shadow-sm'
+                        }`}>
+                          <div className="flex items-center justify-between mb-1 gap-4">
+                            <button 
+                              onClick={() => navigate(`/user/${comment.author_id}`)}
+                              className={`text-xs font-bold truncate ${comment.author_id === user?.id ? 'text-emerald-100' : 'text-emerald-600'}`}
+                            >
+                              {comment.author?.name || t('auth.user')}
+                              {comment.author?.username && <span className="ml-1 font-normal opacity-70">@{comment.author.username}</span>}
+                            </button>
+                            <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <button 
+                                onClick={() => {
+                                  setReplyTo(comment.id);
+                                  setNewComment(`@${comment.author?.username || comment.author?.name}, `);
+                                }}
+                                className={`text-[10px] font-medium hover:underline ${comment.author_id === user?.id ? 'text-emerald-100' : 'text-emerald-500'}`}
+                              >
+                                Ответить
+                              </button>
+                              {comment.author_id !== user?.id && (
+                                <button 
+                                  onClick={() => setShowReportModal({ type: 'comment', id: comment.id })}
+                                  className="text-gray-300 hover:text-rose-500 transition-colors">
+                                  <Flag className="w-3 h-3" />
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                          <p className="text-sm whitespace-pre-wrap break-words">
+                            {comment.content.split(/(@[a-zA-Z0-9_]+)/g).map((part, i) => 
+                              part.startsWith('@') ? (
+                                <button 
+                                  key={i} 
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    const username = part.slice(1);
+                                    supabase.from('profiles').select('id').eq('username', username).single()
+                                      .then(({ data }) => {
+                                        if (data) navigate(`/user/${data.id}`);
+                                      });
+                                  }}
+                                  className="font-bold text-blue-400 hover:underline"
+                                >
+                                  {part}
+                                </button>
+                              ) : part
+                            )}
+                          </p>
+                          <p className={`text-[10px] mt-1 text-right ${comment.author_id === user?.id ? 'text-emerald-100' : 'text-gray-400'}`}>
+                            {format(new Date(comment.created_at), 'HH:mm')}
+                          </p>
                         </div>
-                      )}
-                      <p className="text-sm whitespace-pre-wrap break-words">{comment.content}</p>
-                      <p className={`text-[10px] mt-1 text-right ${comment.author_id === user?.id ? 'text-emerald-100' : 'text-gray-400'}`}>
-                        {format(new Date(comment.created_at), 'HH:mm')}
-                      </p>
+                      </div>
+
+                      {/* Replies */}
+                      {comments.filter(r => r.parent_id === comment.id).map(reply => (
+                        <div key={reply.id} className={`flex gap-3 ml-8 ${reply.author_id === user?.id ? 'flex-row-reverse' : ''}`}>
+                          <button 
+                            onClick={() => navigate(`/user/${reply.author_id}`)}
+                            className="w-6 h-6 rounded-full bg-emerald-50 flex items-center justify-center flex-shrink-0 overflow-hidden hover:opacity-80 transition-opacity"
+                          >
+                            {reply.author?.avatar_url ? (
+                              <img src={reply.author.avatar_url} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                            ) : (
+                              <span className="text-emerald-700 font-medium text-[10px]">
+                                {(reply.author?.name || 'U')[0].toUpperCase()}
+                              </span>
+                            )}
+                          </button>
+                          <div className={`max-w-[80%] rounded-2xl px-3 py-1.5 relative group ${
+                            reply.author_id === user?.id 
+                              ? 'bg-emerald-400 text-white rounded-tr-sm' 
+                              : 'bg-white border border-gray-100 text-gray-800 rounded-tl-sm shadow-sm'
+                          }`}>
+                            {/* Quote original message */}
+                            <div className={`mb-1 pl-2 border-l-2 text-[10px] py-0.5 rounded-r bg-black/5 ${
+                              reply.author_id === user?.id ? 'border-emerald-200 text-emerald-50' : 'border-emerald-400 text-gray-500'
+                            }`}>
+                              <p className="font-bold truncate">{comment.author?.name}</p>
+                              <p className="truncate opacity-80">{comment.content}</p>
+                            </div>
+                            
+                            <div className="flex items-center justify-between mb-0.5 gap-3">
+                              <button 
+                                onClick={() => navigate(`/user/${reply.author_id}`)}
+                                className={`text-[10px] font-bold truncate ${reply.author_id === user?.id ? 'text-emerald-50' : 'text-emerald-600'}`}
+                              >
+                                {reply.author?.name || t('auth.user')}
+                                {reply.author?.username && <span className="ml-1 font-normal opacity-70">@{reply.author.username}</span>}
+                              </button>
+                              {reply.author_id !== user?.id && (
+                                <button 
+                                  onClick={() => setShowReportModal({ type: 'comment', id: reply.id })}
+                                  className="text-gray-300 hover:text-rose-500 transition-colors opacity-0 group-hover:opacity-100">
+                                  <Flag className="w-2.5 h-2.5" />
+                                </button>
+                              )}
+                            </div>
+                            <p className="text-xs whitespace-pre-wrap break-words">
+                              {reply.content.split(/(@[a-zA-Z0-9_]+)/g).map((part, i) => 
+                                part.startsWith('@') ? (
+                                  <button 
+                                    key={i} 
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      const username = part.slice(1);
+                                      supabase.from('profiles').select('id').eq('username', username).single()
+                                        .then(({ data }) => {
+                                          if (data) navigate(`/user/${data.id}`);
+                                        });
+                                    }}
+                                    className="font-bold text-blue-300 hover:underline"
+                                  >
+                                    {part}
+                                  </button>
+                                ) : part
+                              )}
+                            </p>
+                            <p className={`text-[9px] mt-0.5 text-right ${reply.author_id === user?.id ? 'text-emerald-50' : 'text-gray-400'}`}>
+                              {format(new Date(reply.created_at), 'HH:mm')}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
                     </div>
-                  </div>
-                ))
+                  ))}
+                </div>
               )}
             </div>
  
             <div className="p-4 bg-white border-t border-gray-100">
               {user ? (
-                <div className="flex items-end gap-2">
-                  <textarea
-                    value={newComment}
-                    onChange={e => setNewComment(e.target.value)}
-                    placeholder={t('yardym.comment_placeholder')}
-                    className="flex-1 max-h-32 min-h-[44px] bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all resize-none"
-                    rows={1}
-                    onKeyDown={e => {
-                      if (e.key === 'Enter' && !e.shiftKey) {
-                        e.preventDefault();
-                        handleAddComment();
-                      }
-                    }}
-                  />
-                  <button 
-                    onClick={handleAddComment}
-                    disabled={!newComment.trim()}
-                    className="w-11 h-11 flex items-center justify-center bg-emerald-500 text-white rounded-xl hover:bg-emerald-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0">
-                    <Send className="w-5 h-5 ml-1" />
-                  </button>
+                <div className="space-y-2 relative">
+                  {showMentions && mentionSuggestions.length > 0 && (
+                    <div className="absolute bottom-full left-0 w-full bg-white border border-gray-200 rounded-xl shadow-xl mb-2 overflow-hidden z-[120]">
+                      {mentionSuggestions.map((s, idx) => (
+                        <button
+                          key={s.id}
+                          onClick={() => insertMention(s)}
+                          className={`w-full flex items-center gap-3 px-4 py-2.5 hover:bg-emerald-50 transition-colors text-left ${idx === mentionIndex ? 'bg-emerald-50' : ''}`}
+                        >
+                          <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center overflow-hidden flex-shrink-0">
+                            {s.avatar_url ? (
+                              <img src={s.avatar_url} alt="" className="w-full h-full object-cover" />
+                            ) : (
+                              <span className="text-emerald-700 text-xs font-bold">{s.name[0].toUpperCase()}</span>
+                            )}
+                          </div>
+                          <div>
+                            <p className="text-sm font-bold text-gray-800">{s.name}</p>
+                            {s.username && <p className="text-xs text-gray-500">@{s.username}</p>}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {replyTo && (
+                    <div className="flex items-center justify-between bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-100">
+                      <p className="text-xs text-gray-500">
+                        Ответ пользователю <span className="font-bold text-emerald-600">{comments.find(c => c.id === replyTo)?.author?.name}</span>
+                      </p>
+                      <button onClick={() => { setReplyTo(null); setNewComment(''); }} className="text-gray-400 hover:text-rose-500">
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  )}
+                  <div className="flex items-end gap-2">
+                    <textarea
+                      value={newComment}
+                      onChange={e => handleCommentChange(e.target.value)}
+                      placeholder={t('yardym.comment_placeholder')}
+                      className="flex-1 max-h-32 min-h-[44px] bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all resize-none"
+                      rows={1}
+                      onKeyDown={e => {
+                        if (showMentions && mentionSuggestions.length > 0) {
+                          if (e.key === 'ArrowDown') {
+                            e.preventDefault();
+                            setMentionIndex(prev => (prev + 1) % mentionSuggestions.length);
+                          } else if (e.key === 'ArrowUp') {
+                            e.preventDefault();
+                            setMentionIndex(prev => (prev - 1 + mentionSuggestions.length) % mentionSuggestions.length);
+                          } else if (e.key === 'Enter' || e.key === 'Tab') {
+                            e.preventDefault();
+                            if (mentionIndex >= 0) {
+                              insertMention(mentionSuggestions[mentionIndex]);
+                            } else {
+                              insertMention(mentionSuggestions[0]);
+                            }
+                          } else if (e.key === 'Escape') {
+                            setShowMentions(false);
+                          }
+                        } else if (e.key === 'Enter' && !e.shiftKey) {
+                          e.preventDefault();
+                          handleAddComment();
+                        }
+                      }}
+                    />
+                    <button 
+                      onClick={handleAddComment}
+                      disabled={!newComment.trim()}
+                      className="w-11 h-11 flex items-center justify-center bg-emerald-500 text-white rounded-xl hover:bg-emerald-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0">
+                      <Send className="w-5 h-5 ml-1" />
+                    </button>
+                  </div>
                 </div>
               ) : (
                 <div className="text-center py-2 text-sm text-gray-500">

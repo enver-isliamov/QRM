@@ -48,17 +48,26 @@ export default function Notifications() {
   const [isStandalone, setIsStandalone] = useState(false)
 
   useEffect(() => {
-    if ('Notification' in window) {
+    // Detailed check for Push support
+    const hasNotification = 'Notification' in window;
+    const hasSW = 'serviceWorker' in navigator;
+    const hasPushManager = 'PushManager' in window;
+    
+    console.log('Push Support Check:', { hasNotification, hasSW, hasPushManager });
+
+    if (hasNotification) {
       setPushPermission(Notification.permission)
     }
     
     const userAgent = window.navigator.userAgent.toLowerCase();
-    setIsIOS(/iphone|ipad|ipod/.test(userAgent));
+    const isApple = /iphone|ipad|ipod/.test(userAgent);
+    setIsIOS(isApple);
     
-    setIsStandalone(
-      (window.navigator as any).standalone || 
-      window.matchMedia('(display-mode: standalone)').matches
-    );
+    const standalone = (window.navigator as any).standalone || 
+                      window.matchMedia('(display-mode: standalone)').matches;
+    setIsStandalone(standalone);
+    
+    console.log('Device Info:', { isApple, standalone });
   }, [])
 
   const groupedNotifications = useMemo(() => {
@@ -81,23 +90,41 @@ export default function Notifications() {
   }, [notifications]);
 
   const requestPushPermission = async () => {
+    // On iOS, notifications ONLY work in standalone (PWA) mode
     if (isIOS && !isStandalone) {
-      toast.error('Для работы уведомлений на iPhone необходимо добавить приложение на экран "Домой"');
+      toast.error('На iPhone уведомления работают только если добавить приложение на экран "Домой" (Поделиться -> На экран "Домой")');
       return;
     }
 
-    if (!('Notification' in window) || !('serviceWorker' in navigator)) {
-      toast.error('Ваш браузер не поддерживает Push-уведомления. Попробуйте использовать Chrome или Safari (после установки на экран "Домой")');
+    if (!('serviceWorker' in navigator)) {
+      toast.error('Ваш браузер не поддерживает Service Workers');
       return;
     }
 
-    setIsSubscribing(true)
     try {
-      const perm = await Notification.requestPermission()
+      setIsSubscribing(true)
+      
+      let perm: NotificationPermission = 'default';
+      
+      if ('Notification' in window) {
+        perm = await Notification.requestPermission();
+      } else {
+        // Safari fallback or older browsers
+        const registration = await navigator.serviceWorker.ready;
+        if (registration.pushManager) {
+          perm = await (Notification as any).requestPermission();
+        }
+      }
+
       setPushPermission(perm)
       
       if (perm === 'granted') {
         const registration = await navigator.serviceWorker.ready;
+        
+        if (!registration.pushManager) {
+          throw new Error('PushManager_Not_Supported');
+        }
+
         let subscription = await registration.pushManager.getSubscription();
         
         if (!subscription) {
@@ -117,11 +144,15 @@ export default function Notifications() {
         if (error) throw error;
         toast.success('Push-уведомления успешно включены!')
       } else {
-        toast.error('Вы отклонили запрос на отправку уведомлений.')
+        toast.error('Разрешение на уведомления не получено. Проверьте настройки браузера.')
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error requesting push permission:', error)
-      toast.error('Ошибка при настройке уведомлений. Попробуйте позже.')
+      if (error.message === 'PushManager_Not_Supported') {
+        toast.error('Ваш браузер или устройство не поддерживает Push API. Убедитесь, что вы используете последнюю версию iOS и приложение добавлено на экран "Домой".');
+      } else {
+        toast.error(`Ошибка: ${error.message || 'Не удалось включить уведомления'}`);
+      }
     } finally {
       setIsSubscribing(false)
     }

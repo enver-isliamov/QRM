@@ -24,30 +24,20 @@ CREATE POLICY "Users can delete their own prayer completions" ON prayer_completi
 FOR DELETE USING (auth.uid() = user_id);
 
 -- 3. Исправляем функцию отправки Push-уведомлений
--- Мы будем использовать более надежный способ вызова Edge Function
+-- Мы вставляем URL и Ключ напрямую, чтобы избежать ошибок прав доступа (permission denied)
 CREATE OR REPLACE FUNCTION notify_push_service()
 RETURNS trigger AS $$
-DECLARE
-  project_url TEXT;
-  service_role_key TEXT;
 BEGIN
-  -- Пытаемся получить URL и ключ из настроек, если они там есть
-  -- Если нет - используем дефолтные (пользователю нужно будет их настроить в Supabase Dashboard)
-  -- Или можно прописать их здесь явно для надежности
-  project_url := current_setting('app.settings.supabase_url', true);
-  service_role_key := current_setting('app.settings.service_role_key', true);
-
-  IF project_url IS NOT NULL AND service_role_key IS NOT NULL THEN
-    PERFORM
-      net.http_post(
-        url := project_url || '/functions/v1/send-push',
-        headers := jsonb_build_object(
-          'Content-Type', 'application/json',
-          'Authorization', 'Bearer ' || service_role_key
-        ),
-        body := jsonb_build_object('record', row_to_json(NEW))::text
-      );
-  END IF;
+  -- ВАЖНО: Замените значения ниже на ваши реальные данные из Settings -> API
+  PERFORM
+    net.http_post(
+      url := 'https://ВАШ_ID.supabase.co/functions/v1/send-push',
+      headers := jsonb_build_object(
+        'Content-Type', 'application/json',
+        'Authorization', 'Bearer ВАШ_SERVICE_ROLE_KEY'
+      ),
+      body := jsonb_build_object('record', row_to_json(NEW))::text
+    );
   
   RETURN NEW;
 END;
