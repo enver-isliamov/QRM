@@ -1,78 +1,116 @@
-const CACHE_NAME = 'oraza-v4';
-const STATIC_CACHE = 'oraza-static-v4';
-const API_CACHE = 'oraza-api-v4';
+// ─── PRECACHE MANIFEST ───────────────────────────────────────────────────────
+// Этот массив автоматически заполняется VitePWA при сборке (injectManifest)
+const WB_MANIFEST = self.__WB_MANIFEST || []
 
-const urlsToCache = [
+// ─── КОНСТАНТЫ ───────────────────────────────────────────────────────────────
+const STATIC_CACHE = 'oraza-static-v5'
+const API_CACHE    = 'oraza-api-v5'
+const ALL_CACHES   = [STATIC_CACHE, API_CACHE]
+
+const STATIC_URLS = [
   '/',
   '/index.html',
   '/manifest.json',
   '/icon-192x192.png',
   '/icon-512x512.png',
-  '/apple-touch-icon.png'
-];
+]
 
-self.addEventListener('install', e => {
-  self.skipWaiting();
-  e.waitUntil(
-    caches.open(STATIC_CACHE).then(c => c.addAll(urlsToCache))
-  );
-});
+// ─── INSTALL ─────────────────────────────────────────────────────────────────
+self.addEventListener('install', event => {
+  // Активируем новый SW сразу, не ждём закрытия всех вкладок
+  self.skipWaiting()
 
-self.addEventListener('activate', e => {
-  e.waitUntil(
-    caches.keys().then(names =>
-      Promise.all(names.map(n => {
-        if (n !== STATIC_CACHE && n !== API_CACHE) {
-          return caches.delete(n);
-        }
-      }))
-    )
-  );
-});
+  event.waitUntil(
+    caches.open(STATIC_CACHE).then(cache => {
+      // Precache: статика из манифеста + базовые URL
+      const precacheUrls = [
+        ...STATIC_URLS,
+        ...WB_MANIFEST.map(entry => (typeof entry === 'string' ? entry : entry.url)),
+      ]
+      // addAll с защитой: игнорируем отдельные ошибки
+      return Promise.allSettled(precacheUrls.map(url => cache.add(url)))
+    })
+  )
+})
 
-self.addEventListener('fetch', e => {
-  const url = new URL(e.request.url);
+// ─── ACTIVATE ─────────────────────────────────────────────────────────────────
+self.addEventListener('activate', event => {
+  event.waitUntil(
+    Promise.all([
+      // Берём контроль над всеми открытыми вкладками сразу
+      self.clients.claim(),
+      // Удаляем устаревшие кэши
+      caches.keys().then(names =>
+        Promise.all(
+          names
+            .filter(name => !ALL_CACHES.includes(name))
+            .map(name => caches.delete(name))
+        )
+      ),
+    ])
+  )
+})
 
-  // Cache Supabase API requests (Network First, fallback to Cache)
-  if (url.hostname.includes('supabase.co') && e.request.method === 'GET') {
-    e.respondWith(
-      fetch(e.request)
+// ─── FETCH ────────────────────────────────────────────────────────────────────
+self.addEventListener('fetch', event => {
+  const url = new URL(event.request.url)
+
+  // Пропускаем не-GET запросы
+  if (event.request.method !== 'GET') return
+
+  // Пропускаем Chrome extensions и прочее
+  if (!url.protocol.startsWith('http')) return
+
+  // Supabase API → Network First, fallback кэш
+  if (url.hostname.includes('supabase.co')) {
+    event.respondWith(
+      fetch(event.request)
         .then(response => {
-          const resClone = response.clone();
-          caches.open(API_CACHE).then(cache => cache.put(e.request, resClone));
-          return response;
-        })
-        .catch(() => caches.match(e.request))
-    );
-    return;
-  }
-
-  // Cache static assets (Cache First, fallback to Network)
-  if (e.request.method === 'GET') {
-    e.respondWith(
-      caches.match(e.request).then(r => {
-        if (r) return r;
-        return fetch(e.request).then(response => {
-          // Cache dynamically fetched static assets (js, css, woff2, etc)
-          if (response && response.status === 200 && response.type === 'basic') {
-            const resClone = response.clone();
-            caches.open(STATIC_CACHE).then(cache => cache.put(e.request, resClone));
+          if (response.ok) {
+            const clone = response.clone()
+            caches.open(API_CACHE).then(cache => {
+              cache.put(event.request, clone)
+              // Ограничиваем размер API-кэша: удаляем старые записи
+              cache.keys().then(keys => {
+                if (keys.length > 100) {
+                  keys.slice(0, keys.length - 100).forEach(key => cache.delete(key))
+                }
+              })
+            })
           }
-          return response;
-        });
-      })
-    );
+          return response
+        })
+        .catch(() => caches.match(event.request))
+    )
+    return
   }
-});
 
-self.addEventListener('push', function(event) {
-  let data = { title: 'ORAZA', body: 'Новое уведомление', url: '/' };
-  
+  // Статика → Cache First, fallback сеть
+  event.respondWith(
+    caches.match(event.request).then(cached => {
+      if (cached) return cached
+
+      return fetch(event.request).then(response => {
+        // Кэшируем только успешные ответы нашего домена
+        if (response && response.status === 200 && url.origin === self.location.origin) {
+          const clone = response.clone()
+          caches.open(STATIC_CACHE).then(cache => cache.put(event.request, clone))
+        }
+        return response
+      })
+    })
+  )
+})
+
+// ─── PUSH УВЕДОМЛЕНИЯ ─────────────────────────────────────────────────────────
+self.addEventListener('push', event => {
+  let data = { title: 'ORAZA', body: 'Новое уведомление', url: '/' }
+
   if (event.data) {
     try {
-      data = event.data.json();
-    } catch (e) {
-      data.body = event.data.text();
+      data = { ...data, ...event.data.json() }
+    } catch {
+      data.body = event.data.text()
     }
   }
 
@@ -80,28 +118,54 @@ self.addEventListener('push', function(event) {
     body: data.body,
     icon: '/icon-192x192.png',
     badge: '/icon-72x72.png',
-    data: data.url || '/',
+    image: data.image,
+    data: { url: data.url || '/' },
     vibrate: [100, 50, 100],
-  };
+    tag: data.tag || 'oraza-notification',   // группировка похожих уведомлений
+    renotify: true,
+    requireInteraction: false,
+    actions: data.actions || [],
+  }
 
   event.waitUntil(
     self.registration.showNotification(data.title, options)
-  );
-});
+  )
+})
 
-self.addEventListener('notificationclick', function(event) {
-  event.notification.close();
+// ─── КЛИК ПО УВЕДОМЛЕНИЮ ─────────────────────────────────────────────────────
+self.addEventListener('notificationclick', event => {
+  event.notification.close()
+
+  const targetUrl = (event.notification.data && event.notification.data.url) || '/'
+
   event.waitUntil(
-    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function(clientList) {
-      for (let i = 0; i < clientList.length; i++) {
-        let client = clientList[i];
-        if (client.url === event.notification.data && 'focus' in client) {
-          return client.focus();
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clientList => {
+      // Ищем уже открытую вкладку с нашим приложением
+      for (const client of clientList) {
+        if (new URL(client.url).origin === self.location.origin && 'focus' in client) {
+          client.focus()
+          client.navigate(targetUrl)
+          return
         }
       }
+      // Иначе открываем новую
       if (clients.openWindow) {
-        return clients.openWindow(event.notification.data);
+        return clients.openWindow(targetUrl)
       }
     })
-  );
-});
+  )
+})
+
+// ─── PUSH SUBSCRIPTION CHANGE ─────────────────────────────────────────────────
+// Браузер автоматически обновляет подписку — нужно сохранить новую в БД
+self.addEventListener('pushsubscriptionchange', event => {
+  event.waitUntil(
+    event.newSubscription
+      ? fetch('/api/push/update', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ subscription: event.newSubscription }),
+        }).catch(() => {/* offline — проигнорируем */})
+      : Promise.resolve()
+  )
+})
