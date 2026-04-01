@@ -537,7 +537,7 @@ function MeetingDetail() {
                           </div>
                         </div>
                         <p className="text-sm whitespace-pre-wrap break-words">
-                          {comment.content.split(/(@[a-zA-Z0-9_]+)/g).map((part, i) => 
+                          {comment.content.split(/(@[a-zA-Z0-9_]+)/g).map((part: string, i: number) =>
                             part.startsWith('@') ? (
                               <button 
                                 key={i} 
@@ -593,7 +593,7 @@ function MeetingDetail() {
                             </span>
                           </div>
                           <p className="text-xs whitespace-pre-wrap break-words">
-                            {reply.content.split(/(@[a-zA-Z0-9_]+)/g).map((part, i) => 
+                            {reply.content.split(/(@[a-zA-Z0-9_]+)/g).map((part: string, i: number) =>
                               part.startsWith('@') ? (
                                 <button 
                                   key={i} 
