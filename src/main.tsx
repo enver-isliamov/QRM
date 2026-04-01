@@ -13,8 +13,5 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
   </React.StrictMode>
 )
 
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').catch(() => {})
-  })
-}
+// Регистрация Service Worker теперь управляется VitePWA (injectRegister: 'auto')
+// Ручная регистрация удалена, чтобы избежать конфликта двух SW
