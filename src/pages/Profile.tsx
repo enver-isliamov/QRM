@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { User, Settings, Bell, Shield, LogOut, ChevronRight, Globe, Heart, Star, Activity, Award, Camera } from 'lucide-react';
+import { User, Settings, Bell, Shield, LogOut, ChevronRight, Globe, Heart, Star, Activity, Award, Camera, CheckCheck, Loader2 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../lib/supabase';
 import { useTranslation } from 'react-i18next';
@@ -37,8 +37,8 @@ function Profile() {
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [isEditingName, setIsEditingName] = useState(false);
-  const [newName, setNewName] = useState(profile.name || '');
-  const [newUsername, setNewUsername] = useState(profile.username || '');
+  const [newName, setNewName] = useState(profile?.name || '');
+const [newUsername, setNewUsername] = useState(profile?.username || '');
   const [savingProfile, setSavingProfile] = useState(false);
   const [telegramCode, setTelegramCode] = useState<string | null>(null);
   const [telegramLoading, setTelegramLoading] = useState(false);
