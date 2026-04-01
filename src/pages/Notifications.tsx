@@ -8,7 +8,6 @@ import { useNotifications, AppNotification } from '../hooks/useNotifications'
 import { useAuth } from '../hooks/useAuth'
 import { supabase } from '../lib/supabase'
 
-// VAPID ключ из переменной окружения (с fallback для совместимости)
 const VAPID_PUBLIC_KEY =
   import.meta.env.VITE_VAPID_PUBLIC_KEY ||
   'BD6HcwhDmsVV41he4vOhZ9L6MI8qGQR5ZDRxTJpJN_cogqm0VFeMH0pekjQw24AHXZGYpV1U9dA-mzydQXxgznA'
@@ -20,70 +19,53 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array {
   return Uint8Array.from(rawData, c => c.charCodeAt(0))
 }
 
-// ─── Вспомогательная функция: проверка поддержки Push API ────────────────────
-function checkPushSupport(): {
+type PushSupportResult = {
   supported: boolean
   reason: 'ok' | 'no_sw' | 'no_notification' | 'no_push_manager' | 'ios_not_standalone'
-} {
-  const hasSW   = 'serviceWorker' in navigator
-  const hasNotif = 'Notification' in window
-  const hasPush = 'PushManager' in window
+}
 
-  // Определяем iOS и standalone
+function checkPushSupport(): PushSupportResult {
+  const hasSW    = 'serviceWorker' in navigator
+  const hasNotif = 'Notification' in window
+  const hasPush  = 'PushManager' in window
   const ua = navigator.userAgent.toLowerCase()
   const isIOS = /iphone|ipad|ipod/.test(ua)
   const isStandalone =
     (window.navigator as any).standalone === true ||
     window.matchMedia('(display-mode: standalone)').matches
-
   if (isIOS && !isStandalone) return { supported: false, reason: 'ios_not_standalone' }
-  if (!hasSW)   return { supported: false, reason: 'no_sw' }
+  if (!hasSW)    return { supported: false, reason: 'no_sw' }
   if (!hasNotif) return { supported: false, reason: 'no_notification' }
-  if (!hasPush) return { supported: false, reason: 'no_push_manager' }
+  if (!hasPush)  return { supported: false, reason: 'no_push_manager' }
   return { supported: true, reason: 'ok' }
 }
 
 const typeIcon: Record<string, string> = {
-  meeting_update:   '📅',
-  meeting_date_set: '🔔',
-  help_response:    '🤝',
-  help_request_new: '🆘',
-  system:           'ℹ️',
+  meeting_update: '📅', meeting_date_set: '🔔',
+  help_response: '🤝', help_request_new: '🆘', system: 'ℹ️',
 }
-
 const typeLabel: Record<string, string> = {
-  meeting_update:   'Встреча обновлена',
-  meeting_date_set: 'Назначено время',
-  help_response:    'Новый отклик',
-  help_request_new: 'Новое обращение',
-  system:           'Система',
+  meeting_update: 'Встреча обновлена', meeting_date_set: 'Назначено время',
+  help_response: 'Новый отклик', help_request_new: 'Новое обращение', system: 'Система',
 }
 
-// ─── КОМПОНЕНТ ───────────────────────────────────────────────────────────────
 export default function Notifications() {
   const navigate = useNavigate()
   const { user } = useAuth()
   const { notifications, unreadCount, markRead, markAllRead, clearRead } = useNotifications(user?.id ?? null)
-
   const [pushPermission, setPushPermission] = useState<NotificationPermission>('default')
-  const [isSubscribing, setIsSubscribing] = useState(false)
-  const [pushSupport, setPushSupport] = useState<ReturnType<typeof checkPushSupport> | null>(null)
+  const [isSubscribing, setIsSubscribing]   = useState(false)
+  const [pushSupport, setPushSupport]       = useState<PushSupportResult | null>(null)
 
-  // ─── Определяем поддержку Push при монтировании ──────────────────────────
   useEffect(() => {
-    // Небольшая задержка — standalone matchMedia может не сработать мгновенно
     const timer = setTimeout(() => {
-      const support = checkPushSupport()
-      setPushSupport(support)
-
-      if ('Notification' in window) {
-        setPushPermission(Notification.permission)
-      }
+      setPushSupport(checkPushSupport())
+      if ('Notification' in window) setPushPermission(Notification.permission)
     }, 200)
     return () => clearTimeout(timer)
   }, [])
 
-  // ─── Группировка уведомлений ─────────────────────────────────────────────
+  // FIX-003: useMemo возвращает массив — правильно типизируем
   const groupedNotifications = useMemo(() => {
     const groups: Record<string, AppNotification[]> = {}
     notifications.forEach(n => {
@@ -91,7 +73,6 @@ export default function Notifications() {
       if (!groups[key]) groups[key] = []
       groups[key].push(n)
     })
-
     return Object.entries(groups)
       .map(([key, items]) => ({
         key,
@@ -104,11 +85,15 @@ export default function Notifications() {
       .sort((a, b) => b.latestDate.getTime() - a.latestDate.getTime())
   }, [notifications])
 
-  // ─── Запрос разрешения на Push ───────────────────────────────────────────
+  // FIX-003: (typeof arr)[0] вместо ReturnType<typeof arr>[0]
+  const handleGroupClick = (group: (typeof groupedNotifications)[0]) => {
+    // FIX-003: явный тип n в forEach
+    group.items.forEach((n: AppNotification) => { if (!n.is_read) markRead(n.id) })
+    if (group.link) navigate(group.link)
+  }
+
   const requestPushPermission = async () => {
     if (!pushSupport) return
-
-    // Проверки уже вынесены в checkPushSupport, но дублируем для безопасности
     if (pushSupport.reason === 'ios_not_standalone') {
       toast.error('На iPhone/iPad уведомления работают только в установленном PWA')
       return
@@ -117,73 +102,46 @@ export default function Notifications() {
       toast.error('Ваш браузер не поддерживает push-уведомления')
       return
     }
-
-    // Если уже заблокировано — направляем в настройки
     if (pushPermission === 'denied') {
-      toast.error('Уведомления заблокированы. Разрешите их в настройках браузера (значок замка в адресной строке)')
+      toast.error('Уведомления заблокированы. Разрешите их в настройках браузера.')
       return
     }
-
     try {
       setIsSubscribing(true)
-
-      // 1. Запрашиваем разрешение
       const perm = await Notification.requestPermission()
       setPushPermission(perm)
-
       if (perm !== 'granted') {
-        toast.error('Разрешение не получено. Проверьте настройки браузера.')
+        toast.error('Разрешение не получено.')
         return
       }
-
-      // 2. Ждём готовности SW
       const registration = await navigator.serviceWorker.ready
-
       if (!registration.pushManager) {
-        toast.error('Push Manager недоступен. Убедитесь что приложение установлено на экран «Домой».')
+        toast.error('Push Manager недоступен. Установите приложение на экран «Домой».')
         return
       }
-
-      // 3. Проверяем существующую подписку
       let subscription = await registration.pushManager.getSubscription()
-
-      // 4. Создаём новую если нет
       if (!subscription) {
+        // FIX-002: .buffer as ArrayBuffer — правильный тип для applicationServerKey
         subscription = await registration.pushManager.subscribe({
           userVisibleOnly: true,
-          applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+          applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY).buffer as ArrayBuffer,
         })
       }
-
-      // 5. Сохраняем в Supabase (upsert по user_id — один пользователь, одна подписка)
       const { error } = await supabase
         .from('push_subscriptions')
-        .upsert(
-          { user_id: user?.id, subscription: subscription.toJSON(), updated_at: new Date().toISOString() },
-          { onConflict: 'user_id' }
-        )
-
+        .upsert({ user_id: user?.id, subscription: subscription.toJSON() }, { onConflict: 'user_id' })
       if (error) throw error
-
       toast.success('Push-уведомления включены! 🎉')
-    } catch (err: any) {
-      console.error('Push subscription error:', err)
-
-      if (err.name === 'NotAllowedError') {
-        toast.error('Разрешение отклонено. Разрешите уведомления в настройках браузера.')
-      } else if (err.name === 'AbortError' || err.message?.includes('push service')) {
-        toast.error('Не удалось подключиться к push-сервису. Проверьте интернет-соединение.')
+    } catch (err: unknown) {
+      const e = err as Error
+      if (e.name === 'NotAllowedError') {
+        toast.error('Разрешение отклонено. Проверьте настройки браузера.')
       } else {
-        toast.error(`Ошибка: ${err.message || 'Неизвестная ошибка'}`)
+        toast.error(`Ошибка: ${e.message || 'Неизвестная ошибка'}`)
       }
     } finally {
       setIsSubscribing(false)
     }
-  }
-
-  const handleGroupClick = (group: ReturnType<typeof groupedNotifications>[0]) => {
-    group.items.forEach(n => { if (!n.is_read) markRead(n.id) })
-    if (group.link) navigate(group.link)
   }
 
   if (!user) {
@@ -192,9 +150,7 @@ export default function Notifications() {
         <div className="text-center px-4">
           <Bell className="w-12 h-12 text-gray-200 mx-auto mb-3" />
           <p className="text-gray-500 mb-4">Войдите, чтобы видеть уведомления</p>
-          <button onClick={() => navigate('/login')} className="bg-emerald-500 text-white px-6 py-2.5 rounded-xl font-medium">
-            Войти
-          </button>
+          <button onClick={() => navigate('/login')} className="bg-emerald-500 text-white px-6 py-2.5 rounded-xl font-medium">Войти</button>
         </div>
       </div>
     )
@@ -203,11 +159,9 @@ export default function Notifications() {
   const readCount  = notifications.filter(n => n.is_read).length
   const showBanner = pushSupport !== null && pushPermission !== 'granted'
 
-  // ─── Рендер баннера подключения push ─────────────────────────────────────
   const renderPushBanner = () => {
     if (!showBanner || !pushSupport) return null
 
-    // iOS не в standalone — инструкции по установке
     if (pushSupport.reason === 'ios_not_standalone') {
       return (
         <div className="mb-6 bg-amber-50 border border-amber-200 rounded-2xl p-5 shadow-sm">
@@ -216,12 +170,10 @@ export default function Notifications() {
               <Share className="w-6 h-6 text-amber-600" />
             </div>
             <div className="flex-1">
-              <h3 className="font-bold text-amber-900">Установите приложение</h3>
-              <p className="text-sm text-amber-800 mt-1 leading-relaxed">
-                Уведомления на iPhone работают только в установленном приложении.
-              </p>
+              <h3 className="font-bold text-amber-900">Установите приложение для уведомлений</h3>
+              <p className="text-sm text-amber-800 mt-1 leading-relaxed">Уведомления на iPhone работают только в установленном приложении.</p>
               <div className="mt-3 bg-white border border-amber-200 rounded-xl p-3 space-y-2 text-sm text-amber-900">
-                <p>1. Нажмите <Share className="inline w-4 h-4 text-blue-500" /> в нижней панели Safari</p>
+                <p>1. Нажмите <strong>«Поделиться»</strong> в Safari</p>
                 <p>2. Выберите <strong>«На экран "Домой"»</strong></p>
                 <p>3. Откройте приложение с иконки и включите уведомления</p>
               </div>
@@ -232,7 +184,6 @@ export default function Notifications() {
       )
     }
 
-    // Уведомления заблокированы
     if (pushPermission === 'denied') {
       return (
         <div className="mb-6 bg-rose-50 border border-rose-200 rounded-2xl p-5 shadow-sm">
@@ -242,20 +193,14 @@ export default function Notifications() {
             </div>
             <div className="flex-1">
               <h3 className="font-bold text-rose-900">Уведомления заблокированы</h3>
-              <p className="text-sm text-rose-700 mt-1 leading-relaxed">
-                Вы ранее запретили уведомления. Чтобы их включить:
-              </p>
               <div className="mt-3 bg-white border border-rose-200 rounded-xl p-3 text-sm text-rose-800 space-y-1">
                 <p>• Нажмите на <strong>значок замка 🔒</strong> в адресной строке</p>
-                <p>• Найдите «Уведомления» и выберите «Разрешить»</p>
+                <p>• Найдите «Уведомления» → «Разрешить»</p>
                 <p>• Перезагрузите страницу</p>
               </div>
-              <button
-                onClick={() => window.location.reload()}
-                className="mt-3 flex items-center gap-1.5 text-sm font-semibold text-rose-600 hover:underline"
-              >
-                <Settings className="w-4 h-4" />
-                Обновить страницу после изменения
+              <button onClick={() => window.location.reload()}
+                className="mt-3 flex items-center gap-1.5 text-sm font-semibold text-rose-600 hover:underline">
+                <Settings className="w-4 h-4" />Обновить страницу
               </button>
             </div>
           </div>
@@ -263,7 +208,6 @@ export default function Notifications() {
       )
     }
 
-    // Браузер не поддерживает push
     if (!pushSupport.supported) {
       return (
         <div className="mb-6 bg-gray-100 border border-gray-200 rounded-2xl p-5">
@@ -273,17 +217,13 @@ export default function Notifications() {
             </div>
             <div>
               <h3 className="font-bold text-gray-700">Push-уведомления недоступны</h3>
-              <p className="text-sm text-gray-500 mt-1">
-                Ваш браузер не поддерживает Web Push.
-                Попробуйте Google Chrome или установите приложение на экран «Домой».
-              </p>
+              <p className="text-sm text-gray-500 mt-1">Попробуйте Google Chrome или установите приложение на экран «Домой».</p>
             </div>
           </div>
         </div>
       )
     }
 
-    // Стандартный баннер «Включить уведомления»
     return (
       <div className="mb-6 bg-white border border-blue-100 rounded-2xl p-5 shadow-sm">
         <div className="flex items-start gap-4">
@@ -293,24 +233,14 @@ export default function Notifications() {
           <div className="flex-1">
             <h3 className="font-bold text-gray-900">Будьте в курсе событий</h3>
             <p className="text-sm text-gray-500 mt-1 leading-relaxed">
-              Получайте уведомления об откликах на ваши обращения и новостях встреч — даже когда приложение закрыто.
+              Получайте уведомления об откликах и новостях встреч — даже когда приложение закрыто.
             </p>
-            <button
-              onClick={requestPushPermission}
-              disabled={isSubscribing}
-              className="mt-4 w-full bg-blue-600 text-white font-semibold py-3 rounded-xl hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 disabled:opacity-50 shadow-md shadow-blue-100"
-            >
-              {isSubscribing ? (
-                <>
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                  <span>Подключение...</span>
-                </>
-              ) : (
-                <>
-                  <Bell className="w-5 h-5" />
-                  <span>Включить уведомления</span>
-                </>
-              )}
+            <button onClick={requestPushPermission} disabled={isSubscribing}
+              className="mt-4 w-full bg-blue-600 text-white font-semibold py-3 rounded-xl hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 disabled:opacity-50 shadow-md shadow-blue-100">
+              {isSubscribing
+                ? <><Loader2 className="w-5 h-5 animate-spin" /><span>Подключение...</span></>
+                : <><Bell className="w-5 h-5" /><span>Включить уведомления</span></>
+              }
             </button>
           </div>
         </div>
@@ -320,31 +250,20 @@ export default function Notifications() {
 
   return (
     <div className="animate-fade-in min-h-screen bg-gray-50">
-      {/* Заголовок */}
       <div className="bg-white px-4 py-4 border-b border-gray-200 sticky top-0 z-10">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-xl font-bold text-gray-800">Уведомления</h1>
-            {unreadCount > 0 && (
-              <p className="text-sm text-emerald-600">{unreadCount} непрочитанных</p>
-            )}
+            {unreadCount > 0 && <p className="text-sm text-emerald-600">{unreadCount} непрочитанных</p>}
           </div>
           <div className="flex items-center gap-2">
             {unreadCount > 0 && (
-              <button
-                onClick={markAllRead}
-                className="p-2 text-gray-400 hover:text-emerald-600 transition-colors"
-                title="Отметить все как прочитанные"
-              >
+              <button onClick={markAllRead} className="p-2 text-gray-400 hover:text-emerald-600 transition-colors" title="Отметить все как прочитанные">
                 <CheckCheck className="w-5 h-5" />
               </button>
             )}
             {readCount > 0 && (
-              <button
-                onClick={clearRead}
-                className="p-2 text-gray-400 hover:text-rose-600 transition-colors"
-                title="Очистить прочитанные"
-              >
+              <button onClick={clearRead} className="p-2 text-gray-400 hover:text-rose-600 transition-colors" title="Очистить прочитанные">
                 <Trash2 className="w-5 h-5" />
               </button>
             )}
@@ -353,10 +272,8 @@ export default function Notifications() {
       </div>
 
       <div className="p-4 pb-24">
-        {/* Push-баннер */}
         {renderPushBanner()}
 
-        {/* Список уведомлений */}
         {notifications.length === 0 ? (
           <div className="text-center py-16">
             <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -370,20 +287,12 @@ export default function Notifications() {
         ) : (
           <div className="space-y-4">
             {groupedNotifications.map(group => (
-              <div
-                key={group.key}
-                className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden"
-              >
-                <button
-                  onClick={() => handleGroupClick(group)}
-                  className={`w-full text-left p-4 transition-colors hover:bg-gray-50 flex items-start gap-3 ${
-                    group.hasUnread ? 'bg-emerald-50/30' : ''
-                  }`}
-                >
+              <div key={group.key} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                <button onClick={() => handleGroupClick(group)}
+                  className={`w-full text-left p-4 transition-colors hover:bg-gray-50 flex items-start gap-3 ${group.hasUnread ? 'bg-emerald-50/30' : ''}`}>
                   <div className="w-12 h-12 rounded-xl bg-gray-50 flex items-center justify-center text-2xl flex-shrink-0 border border-gray-100">
                     {typeIcon[group.type] ?? '🔔'}
                   </div>
-
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex flex-col">
@@ -398,7 +307,6 @@ export default function Notifications() {
                         <div className="w-2.5 h-2.5 bg-emerald-500 rounded-full flex-shrink-0 mt-1 shadow-sm shadow-emerald-200" />
                       )}
                     </div>
-
                     {group.items.length > 1 ? (
                       <div className="mt-2 space-y-1">
                         {group.items.slice(0, 3).map(item => (
@@ -408,27 +316,21 @@ export default function Notifications() {
                           </div>
                         ))}
                         {group.items.length > 3 && (
-                          <p className="text-[10px] font-medium text-emerald-600">
-                            + ещё {group.items.length - 3}
-                          </p>
+                          <p className="text-[10px] font-medium text-emerald-600">+ ещё {group.items.length - 3}</p>
                         )}
                       </div>
                     ) : (
                       group.items[0].body && (
-                        <p className="text-xs text-gray-500 mt-1 line-clamp-2 leading-relaxed">
-                          {group.items[0].body}
-                        </p>
+                        <p className="text-xs text-gray-500 mt-1 line-clamp-2 leading-relaxed">{group.items[0].body}</p>
                       )
                     )}
-
                     <div className="mt-3 flex items-center justify-between">
                       <span className="text-[10px] text-gray-400 font-medium">
                         {format(group.latestDate, 'd MMMM, HH:mm', { locale: ru })}
                       </span>
                       {group.link && (
                         <div className="flex items-center gap-1 text-[10px] font-bold text-emerald-600 uppercase tracking-tight">
-                          <span>Подробнее</span>
-                          <ChevronRight className="w-3 h-3" />
+                          <span>Подробнее</span><ChevronRight className="w-3 h-3" />
                         </div>
                       )}
                     </div>
