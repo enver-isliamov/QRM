@@ -42,7 +42,7 @@ export default function Home() {
   const handleShare = async () => {
     const shareData = {
       title: t('home.title'),
-      text: t('home.subtitle') + '. Расписание намазов, этно-календарь и взаимопомощь.',
+      text: t('home.subtitle') + t('home.share_text_extra'),
       url: window.location.origin,
     }
     if (navigator.share) {
@@ -53,7 +53,7 @@ export default function Home() {
       }
     } else {
       navigator.clipboard.writeText(window.location.origin)
-      alert('Ссылка скопирована в буфер обмена!')
+      alert(t('home.share_alert'))
     }
   }
 
@@ -83,7 +83,7 @@ export default function Home() {
       {/* Welcome Header */}
       <div className="px-4 pt-6 pb-2">
         <h1 className="text-2xl font-bold text-gray-900">
-          {user ? `${i18n.language === 'crh' ? 'Selâm' : 'Селям'}, ${profile?.name?.split(' ')[0] || user.user_metadata?.full_name?.split(' ')[0] || (i18n.language === 'crh' ? 'dost' : 'дост')}!` : (i18n.language === 'crh' ? 'Selâm aleykum!' : 'Селям алейкум!')}
+          {user ? t('home.welcome_user', { name: profile?.name?.split(' ')[0] || user.user_metadata?.full_name?.split(' ')[0] || t('auth.user') }) : t('home.welcome_guest')}
         </h1>
         <p className="text-gray-500 text-sm mt-1">{t('home.subtitle')}</p>
       </div>
@@ -98,7 +98,7 @@ export default function Home() {
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
                 <Clock className="w-4 h-4" />
-                <span className="font-medium text-sm">{t('nav.namaz')} — {i18n.language === 'crh' ? 'bugün' : 'сегодня'}</span>
+                <span className="font-medium text-sm">{t('nav.namaz')} — {t('home.today')}</span>
               </div>
               <span className="text-xs opacity-70 bg-white/10 px-2 py-1 rounded-full">{format(new Date(), 'd MMMM', { locale: dateLocale })}</span>
             </div>
@@ -107,11 +107,11 @@ export default function Home() {
                 {nextPrayer && timeRemaining && (
                   <div className="bg-white/15 backdrop-blur-sm rounded-xl p-4 mb-4 flex items-center justify-between border border-white/10">
                     <div>
-                      <p className="text-xs opacity-80 uppercase tracking-wider font-semibold mb-1">{i18n.language === 'crh' ? 'Nevbetteki' : 'До'} {nextPrayer.name}</p>
+                      <p className="text-xs opacity-80 uppercase tracking-wider font-semibold mb-1">{t('home.next_prayer')} {nextPrayer.name}</p>
                       <p className="text-2xl font-bold font-mono tracking-widest">{timeRemaining}</p>
                     </div>
                     <div className="text-right">
-                      <p className="text-xs opacity-80 uppercase tracking-wider font-semibold mb-1">{i18n.language === 'crh' ? 'Namaz vaqtı' : 'След. намаз'}</p>
+                      <p className="text-xs opacity-80 uppercase tracking-wider font-semibold mb-1">{t('home.prayer_time_label')}</p>
                       <p className="text-xl font-bold">{(nextPrayer as any).timeStr}</p>
                     </div>
                   </div>
@@ -166,7 +166,7 @@ export default function Home() {
               <div className="w-8 h-8 bg-rose-100 rounded-full flex items-center justify-center">
                 <AlertCircle className="w-5 h-5 text-rose-500" />
               </div>
-              <span className="text-xs font-bold text-rose-600 uppercase tracking-widest">{i18n.language === 'crh' ? 'Acele yardım' : 'Срочная помощь'}</span>
+              <span className="text-xs font-bold text-rose-600 uppercase tracking-widest">{t('home.urgent_help')}</span>
             </div>
             <h3 className="font-bold text-gray-900 text-lg leading-tight">{urgentHelp.title}</h3>
             <p className="text-sm text-gray-500 mt-2 flex items-center gap-1">
@@ -174,7 +174,7 @@ export default function Home() {
               {urgentHelp.location}
             </p>
             <div className="mt-4 bg-rose-500 text-white text-center py-3 rounded-xl text-sm font-bold shadow-md shadow-rose-200 active:scale-[0.98] transition-transform">
-              {i18n.language === 'crh' ? 'YARDIM ETIP OLAM' : 'Я МОГУ ПОМОЧЬ'} →
+              {t('home.i_can_help')} →
             </div>
           </button>
         </div>
@@ -184,9 +184,9 @@ export default function Home() {
       {upcomingEvents.length > 0 && (
         <div className="px-4 pt-6">
           <div className="flex items-center justify-between mb-3 px-1">
-            <span className="font-bold text-gray-900 text-lg">{i18n.language === 'crh' ? 'Yaqın vaqıttaki vaqia' : 'Ближайшая дата'}</span>
+            <span className="font-bold text-gray-900 text-lg">{t('home.upcoming_event')}</span>
             <button onClick={() => navigate('/ethno-calendar')} className="text-emerald-600 text-sm font-semibold flex items-center gap-0.5 hover:underline">
-              {i18n.language === 'crh' ? 'Episi' : 'Все'} <ChevronRight className="w-4 h-4" />
+              {t('home.all')} <ChevronRight className="w-4 h-4" />
             </button>
           </div>
           {upcomingEvents.map(event => {
@@ -217,7 +217,7 @@ export default function Home() {
           <div className="flex items-center justify-between mb-3 px-1">
             <span className="font-bold text-gray-900 text-lg">{t('home.village_meetings')}</span>
             <button onClick={() => navigate('/village-meetings')} className="text-emerald-600 text-sm font-semibold flex items-center gap-0.5 hover:underline">
-              {i18n.language === 'crh' ? 'Episi' : 'Все'} <ChevronRight className="w-4 h-4" />
+              {t('home.all')} <ChevronRight className="w-4 h-4" />
             </button>
           </div>
           <button onClick={() => navigate(`/meetings/${upcomingMeeting.id}`)}
@@ -225,7 +225,7 @@ export default function Home() {
             <div className="flex items-start justify-between mb-3">
               <div>
                 <h3 className="font-bold text-gray-900 text-lg leading-tight">{i18n.language === 'crh' ? upcomingMeeting.village_crh || upcomingMeeting.village : upcomingMeeting.village}</h3>
-                <p className="text-xs text-emerald-600 font-bold mt-1 uppercase tracking-wider">{i18n.language === 'crh' ? 'Teşkilâtçı' : 'Организатор'}: {upcomingMeeting.organizer}</p>
+                <p className="text-xs text-emerald-600 font-bold mt-1 uppercase tracking-wider">{t('home.organizer')}: {upcomingMeeting.organizer}</p>
               </div>
               <div className="bg-amber-50 text-amber-700 text-[10px] font-bold px-2.5 py-1 rounded-full border border-amber-100 uppercase tracking-wider whitespace-nowrap ml-2">
                 {format(new Date(upcomingMeeting.meeting_date), 'd MMMM', { locale: dateLocale })}
@@ -240,7 +240,7 @@ export default function Home() {
             {upcomingMeeting.fund_purpose && (
               <div className="mt-2 bg-gray-50 rounded-xl p-3 border border-gray-100">
                 <div className="flex justify-between text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-2">
-                  <span>{i18n.language === 'crh' ? 'Toplav' : 'Сбор'}: {upcomingMeeting.fund_purpose}</span>
+                  <span>{t('home.fund_collecting')}: {upcomingMeeting.fund_purpose}</span>
                   {upcomingMeeting.fund_progress != null && (
                     <span className="text-emerald-600">{upcomingMeeting.fund_progress}%</span>
                   )}
@@ -261,9 +261,9 @@ export default function Home() {
                     </div>
                   ))}
                 </div>
-                <span className="font-medium">+{upcomingMeeting.attendees_count ?? 0} {i18n.language === 'crh' ? 'iştirakçı' : 'участников'}</span>
+                <span className="font-medium">+{upcomingMeeting.attendees_count ?? 0} {t('home.attendees')}</span>
               </div>
-              <span className="text-xs font-bold text-emerald-600">{i18n.language === 'crh' ? 'Tafsilâtlıca' : 'Подробнее'} →</span>
+              <span className="text-xs font-bold text-emerald-600">{t('home.details')} →</span>
             </div>
           </button>
         </div>
@@ -275,7 +275,7 @@ export default function Home() {
         <div className="grid grid-cols-2 gap-4">
           {[
             { path: '/village-meetings', emoji: '🏘️', title: t('home.village_meetings'),   sub: i18n.language === 'crh' ? 'Vaqialar ve toplavlar' : 'События и сборы', show: featureToggles.meetings, color: 'bg-blue-50' },
-            { path: '/micro-yardym',     emoji: '🤝', title: i18n.language === 'crh' ? 'Mikro-Yardım' : 'Микро-Ярдым',   sub: t('nav.yardym'), show: featureToggles.yardym, color: 'bg-emerald-50' },
+            { path: '/micro-yardym',     emoji: '🤝', title: 'Mikro-Yardım',   sub: t('nav.yardym'), show: featureToggles.yardym, color: 'bg-emerald-50' },
             { path: '/ethno-calendar',   emoji: '📅', title: i18n.language === 'crh' ? 'Taqvim' : 'Этно-календарь', sub: i18n.language === 'crh' ? 'Bayramlar' : 'Праздники', show: featureToggles.calendar, color: 'bg-amber-50' },
             { path: '/rituals',          emoji: '📖', title: i18n.language === 'crh' ? 'Adetler' : 'Обряды',         sub: 'Nikâh, Cenaze', show: featureToggles.rituals, color: 'bg-purple-50' },
           ].filter(item => item.show).map(({ path, emoji, title, sub, color }) => (
@@ -296,8 +296,8 @@ export default function Home() {
             <Share2 className="w-7 h-7 text-indigo-600" />
           </div>
           <div>
-            <h3 className="font-bold text-indigo-900 text-lg">{i18n.language === 'crh' ? 'Yaqınlarıñıznen paylaşuñız' : 'Поделиться с близкими'}</h3>
-            <p className="text-xs text-indigo-700 mt-1 leading-relaxed font-medium">{i18n.language === 'crh' ? 'ORAZA aqqında aqrabalarıñızğa aytıñız — bu bizim cemiyetimizniñ büyümesine yardım eter.' : 'Расскажите об ORAZA родным — это поможет нашему сообществу расти.'}</p>
+            <h3 className="font-bold text-indigo-900 text-lg">{t('home.share_title')}</h3>
+            <p className="text-xs text-indigo-700 mt-1 leading-relaxed font-medium">{t('home.share_desc')}</p>
           </div>
         </button>
       </div>
@@ -313,10 +313,10 @@ export default function Home() {
               <h3 className="font-black text-xl tracking-tight">{t('home.support')}</h3>
             </div>
             <p className="text-sm text-emerald-50 mb-6 leading-relaxed font-medium opacity-90">
-              {i18n.language === 'crh' ? 'ORAZA sizniñ desteğiñiz sayesinde bar ola ve inkişaf ete. Adetlerimizni saqlap qaluğa öz issañıznı qoşuñız.' : 'ORAZA существует и развивается благодаря вашей поддержке. Внесите свой вклад в сохранение наших традиций.'}
+              {t('home.support_desc')}
             </p>
             <button onClick={() => navigate('/support')} className="bg-white text-emerald-700 font-black py-3.5 px-6 rounded-2xl text-sm hover:bg-emerald-50 transition-all w-full text-center touch-feedback shadow-lg active:scale-[0.98]">
-              {i18n.language === 'crh' ? 'ORAZA-NI DESTEKLEMEK' : 'ПОДДЕРЖАТЬ ORAZA'}
+              {t('home.support_button')}
             </button>
           </div>
           <div className="absolute -bottom-10 -right-10 w-48 h-48 bg-white opacity-10 rounded-full blur-3xl"></div>
