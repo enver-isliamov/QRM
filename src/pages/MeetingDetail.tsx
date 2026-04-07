@@ -1,19 +1,22 @@
-import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ChevronLeft, MapPin, Calendar, Users, Bell, BellOff, Heart, ExternalLink, Phone, Mail, Check, Edit, Copy, MessageCircle, Send, X, Flag } from 'lucide-react';
 import { format } from 'date-fns';
-import { ru } from 'date-fns/locale';
+import { ru, tr } from 'date-fns/locale';
 import { useMeetingDetail, useMeetings } from '../hooks/useMeetings';
 import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../lib/supabase';
 import { toast } from 'sonner';
 
 function MeetingDetail() {
+  const { t, i18n } = useTranslation();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user, profile } = useAuth();
   const { meeting, participants, loading } = useMeetingDetail(id);
   const { toggleAttend, toggleSubscribe, updateMeeting, isGoing, isSubscribed } = useMeetings(user?.id);
+  
+  const dateLocale = i18n.language === 'crh' ? tr : ru;
   const [copied, setCopied] = useState(false);
   const [editingFund, setEditingFund] = useState(false);
   const [fundForm, setFundForm] = useState({ fund_current: 0, fund_cloudtips_url: '', fund_instructions: '' });
@@ -168,8 +171,8 @@ function MeetingDetail() {
         await supabase.from('user_notifications').insert({
           user_id: meeting.author_id,
           type: 'meeting_update',
-          title: 'Новый комментарий к встрече',
-          body: `В обсуждении встречи "${meeting.village}" появился новый комментарий`,
+          title: t('meetings.new_comment_notification'),
+          body: t('meetings.new_comment_body', { village: meeting.village }),
           link: `/meetings/${id}`
         });
       }
@@ -181,8 +184,8 @@ function MeetingDetail() {
           await supabase.from('user_notifications').insert({
             user_id: parentComment.author_id,
             type: 'system',
-            title: 'Новый ответ на ваш комментарий',
-            body: `Вам ответили в обсуждении встречи "${meeting?.village}"`,
+            title: t('meetings.reply_notification'),
+            body: t('meetings.reply_body', { village: meeting?.village }),
             link: `/meetings/${id}`
           });
         }
@@ -202,7 +205,7 @@ function MeetingDetail() {
     });
     setSubmitting(false);
     if (!error) {
-      toast.success('Жалоба отправлена');
+      toast.success(t('meetings.report_success'));
       setShowReportModal(null);
       setReportReason('');
     }
@@ -257,8 +260,8 @@ function MeetingDetail() {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <h2 className="text-xl font-semibold text-gray-600 mb-4">Встреча не найдена</h2>
-          <button onClick={() => navigate('/village-meetings')} className="text-emerald-600 font-medium">← К списку встреч</button>
+          <h2 className="text-xl font-semibold text-gray-600 mb-4">{t('meetings.not_found')}</h2>
+          <button onClick={() => navigate('/village-meetings')} className="text-emerald-600 font-medium">{t('meetings.back_to_list')}</button>
         </div>
       </div>
     );
@@ -283,27 +286,27 @@ function MeetingDetail() {
       {/* Header */}
       <div className="bg-white px-4 py-4 border-b border-gray-200">
         <button onClick={() => navigate('/village-meetings')} className="flex items-center gap-2 text-gray-600 mb-2">
-          <ChevronLeft className="w-5 h-5" /><span>Назад</span>
+          <ChevronLeft className="w-5 h-5" /><span>{t('common.back')}</span>
         </button>
         <div className="flex items-start justify-between">
           <div>
             <h1 className="text-xl font-bold text-gray-800">{meeting.village}</h1>
-            <p className="text-sm text-gray-500">Организатор: {meeting.organizer}</p>
+            <p className="text-sm text-gray-500">{t('meetings.organizer')}: {meeting.organizer}</p>
             {days !== null && days > 0 && (
               <div className="mt-2 inline-block bg-emerald-50 text-emerald-700 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border border-emerald-100">
-                До встречи {days} {days === 1 ? 'день' : (days > 1 && days < 5) ? 'дня' : 'дней'}
+                {t('meetings.days_left', { count: days })}
               </div>
             )}
             {days === 0 && (
               <div className="mt-2 inline-block bg-rose-50 text-rose-700 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border border-rose-100 animate-pulse">
-                Встреча сегодня!
+                {t('meetings.today')}
               </div>
             )}
           </div>
           {canEdit && (
             <button onClick={() => navigate(`/meetings/${id}/edit`)}
               className="flex items-center gap-1 text-sm text-emerald-600 border border-emerald-200 rounded-lg px-3 py-1.5 hover:bg-emerald-50">
-              <Edit className="w-4 h-4" /><span>Изменить</span>
+              <Edit className="w-4 h-4" /><span>{t('common.edit')}</span>
             </button>
           )}
         </div>
@@ -318,10 +321,10 @@ function MeetingDetail() {
             </div>
             <div>
               <p className="font-semibold text-gray-800">
-                {format(new Date(meeting.meeting_date), 'd MMMM yyyy', { locale: ru })}
-                {meeting.meeting_time && <span className="text-emerald-600 ml-2">в {(meeting.meeting_time as string).slice(0,5)}</span>}
+                {format(new Date(meeting.meeting_date), 'd MMMM yyyy', { locale: dateLocale })}
+                {meeting.meeting_time && <span className="text-emerald-600 ml-2">{t('meetings.at_time', { time: (meeting.meeting_time as string).slice(0,5) })}</span>}
               </p>
-              {!meeting.meeting_time && <p className="text-sm text-amber-600">Точное время уточняется</p>}
+              {!meeting.meeting_time && <p className="text-sm text-amber-600">{t('meetings.time_not_set')}</p>}
               <a 
                 href={getGoogleCalendarUrl()} 
                 target="_blank" 
@@ -329,7 +332,7 @@ function MeetingDetail() {
                 className="mt-2 inline-flex items-center gap-1.5 text-xs font-medium text-emerald-600 hover:underline"
               >
                 <Calendar className="w-3 h-3" />
-                Добавить в Google Календарь
+                {t('meetings.add_to_calendar')}
               </a>
             </div>
           </div>
@@ -356,7 +359,7 @@ function MeetingDetail() {
                   rel="noopener noreferrer"
                   className="text-emerald-600 text-sm font-medium mt-3 inline-flex items-center gap-1 hover:underline"
                 >
-                  Открыть в Яндекс Картах
+                  {t('meetings.open_maps')}
                   <ExternalLink className="w-3 h-3" />
                 </a>
               </div>
@@ -367,7 +370,7 @@ function MeetingDetail() {
         {/* Description */}
         {meeting.description && (
           <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
-            <h3 className="font-semibold text-gray-800 mb-2">О встрече</h3>
+            <h3 className="font-semibold text-gray-800 mb-2">{t('meetings.about')}</h3>
             <p className="text-gray-600 text-sm leading-relaxed">{meeting.description}</p>
           </div>
         )}
@@ -375,7 +378,7 @@ function MeetingDetail() {
         {/* Organizer contacts */}
         {(meeting.organizer_phone || meeting.organizer_email) && (
           <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
-            <h3 className="font-semibold text-gray-800 mb-3">Контакты организатора</h3>
+            <h3 className="font-semibold text-gray-800 mb-3">{t('meetings.contacts')}</h3>
             {meeting.organizer_phone && (
               <a href={`tel:${meeting.organizer_phone}`}
                 className="flex items-center gap-3 py-2 text-emerald-700 hover:underline">
@@ -397,20 +400,20 @@ function MeetingDetail() {
             <div className="flex items-center justify-between mb-3">
               <h3 className="font-semibold text-gray-800 flex items-center gap-2">
                 <Heart className="w-4 h-4 text-rose-500" />
-                {meeting.fund_purpose || 'Сбор средств'}
+                {meeting.fund_purpose || t('meetings.fund_title')}
               </h3>
               {canEdit && (
                 <button onClick={() => {
                   setFundForm({ fund_current: meeting.fund_current ?? 0, fund_cloudtips_url: meeting.fund_cloudtips_url ?? '', fund_instructions: meeting.fund_instructions ?? '' });
                   setEditingFund(true);
-                }} className="text-sm text-emerald-600 hover:underline">Обновить</button>
+                }} className="text-sm text-emerald-600 hover:underline">{t('meetings.fund_update')}</button>
               )}
             </div>
 
             {meeting.fund_goal && (
               <>
                 <div className="flex items-center justify-between text-sm mb-2">
-                  <span className="text-gray-500">Собрано {meeting.fund_current?.toLocaleString('ru') ?? 0} из {meeting.fund_goal?.toLocaleString('ru')} ₽</span>
+                  <span className="text-gray-500">{t('meetings.fund_collected', { current: meeting.fund_current?.toLocaleString(i18n.language) ?? 0, goal: meeting.fund_goal?.toLocaleString(i18n.language) })}</span>
                   <span className="font-bold text-emerald-600">{progress ?? 0}%</span>
                 </div>
                 <div className="h-3 bg-gray-100 rounded-full overflow-hidden mb-4">
@@ -435,12 +438,12 @@ function MeetingDetail() {
                 <a href={meeting.fund_cloudtips_url} target="_blank" rel="noreferrer"
                   className="flex items-center justify-center gap-2 w-full bg-emerald-500 text-white py-3 rounded-xl font-medium hover:bg-emerald-600 transition-colors">
                   <Heart className="w-4 h-4" />
-                  Внести вклад
+                  {t('meetings.fund_contribute')}
                   <ExternalLink className="w-4 h-4" />
                 </a>
               </div>
             ) : canEdit ? (
-              <p className="text-sm text-gray-400 text-center py-2">Добавьте ссылку на сбор средств (CloudTips)</p>
+              <p className="text-sm text-gray-400 text-center py-2">{t('meetings.fund_no_link')}</p>
             ) : null}
           </div>
         )}
@@ -450,9 +453,9 @@ function MeetingDetail() {
           <div className="flex items-center gap-2 mb-3">
             <Users className="w-4 h-4 text-gray-500" />
             <h3 className="font-semibold text-gray-800">
-              Участники ({meeting.attendees_count ?? 0})
+              {t('meetings.participants')} ({meeting.attendees_count ?? 0})
               {(meeting as any).subscribers_count > 0 && (
-                <span className="text-sm text-gray-400 ml-2">· {(meeting as any).subscribers_count} подписчиков</span>
+                <span className="text-sm text-gray-400 ml-2">· {(meeting as any).subscribers_count} {t('meetings.subscribers')}</span>
               )}
             </h3>
           </div>
@@ -468,11 +471,11 @@ function MeetingDetail() {
                 </div>
               ))}
               {(meeting.attendees_count ?? 0) > 20 && (
-                <span className="text-sm text-gray-400 self-center">+{(meeting.attendees_count ?? 0) - 20} ещё</span>
+                <span className="text-sm text-gray-400 self-center">+{t('common.more', { count: (meeting.attendees_count ?? 0) - 20 })}</span>
               )}
             </div>
           ) : (
-            <p className="text-sm text-gray-400">Пока никто не отметился. Будь первым!</p>
+            <p className="text-sm text-gray-400">{t('meetings.no_participants')}</p>
           )}
         </div>
 
@@ -481,9 +484,9 @@ function MeetingDetail() {
           <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <MessageCircle className="w-4 h-4 text-gray-500" />
-              <h3 className="font-semibold text-gray-800">Обсуждение</h3>
+              <h3 className="font-semibold text-gray-800">{t('meetings.discussion')}</h3>
             </div>
-            <span className="text-xs text-gray-400">{comments.length} сообщений</span>
+            <span className="text-xs text-gray-400">{t('common.messages_count', { count: comments.length })}</span>
           </div>
 
           <div className="p-4 space-y-4 max-h-[400px] overflow-y-auto bg-gray-50/50">
@@ -494,8 +497,8 @@ function MeetingDetail() {
             ) : comments.length === 0 ? (
               <div className="text-center py-6">
                 <MessageCircle className="w-10 h-10 text-gray-200 mx-auto mb-2" />
-                <p className="text-sm text-gray-500">Нет комментариев</p>
-                <p className="text-xs text-gray-400">Будьте первым, кто начнет обсуждение!</p>
+                <p className="text-sm text-gray-500">{t('meetings.no_comments')}</p>
+                <p className="text-xs text-gray-400">{t('meetings.no_comments_desc')}</p>
               </div>
             ) : (
               <div className="space-y-4">
@@ -527,7 +530,7 @@ function MeetingDetail() {
                               }}
                               className={`text-[9px] font-medium hover:underline ${comment.author_id === user?.id ? 'text-emerald-100' : 'text-emerald-500'}`}
                             >
-                              Ответить
+                              {t('meetings.reply')}
                             </button>
                             {comment.author_id !== user?.id && (
                               <button onClick={() => setShowReportModal({ type: 'comment', id: comment.id })} className="text-gray-300 hover:text-rose-500">
@@ -537,7 +540,7 @@ function MeetingDetail() {
                           </div>
                         </div>
                         <p className="text-sm whitespace-pre-wrap break-words">
-                          {comment.content.split(/(@[a-zA-Z0-9_]+)/g).map((part: string, i: number) =>
+                          {comment.content.split(/(@[a-zA-Z0-9_]+)/g).map((part: string, i: number) => 
                             part.startsWith('@') ? (
                               <button 
                                 key={i} 
@@ -593,7 +596,7 @@ function MeetingDetail() {
                             </span>
                           </div>
                           <p className="text-xs whitespace-pre-wrap break-words">
-                            {reply.content.split(/(@[a-zA-Z0-9_]+)/g).map((part: string, i: number) =>
+                            {reply.content.split(/(@[a-zA-Z0-9_]+)/g).map((part: string, i: number) => 
                               part.startsWith('@') ? (
                                 <button 
                                   key={i} 
@@ -653,7 +656,7 @@ function MeetingDetail() {
                 {replyTo && (
                   <div className="flex items-center justify-between bg-gray-50 px-3 py-1 rounded-lg border border-gray-100">
                     <p className="text-[10px] text-gray-500">
-                      Ответ пользователю <span className="font-bold text-emerald-600">{comments.find(c => c.id === replyTo)?.author?.name}</span>
+                      {t('meetings.reply_to')} <span className="font-bold text-emerald-600">{comments.find(c => c.id === replyTo)?.author?.name}</span>
                     </p>
                     <button onClick={() => { setReplyTo(null); setNewComment(''); }} className="text-gray-400 hover:text-rose-500">
                       <X className="w-3 h-3" />
@@ -664,7 +667,7 @@ function MeetingDetail() {
                   <textarea
                     value={newComment}
                     onChange={e => handleCommentChange(e.target.value)}
-                    placeholder="Написать комментарий..."
+                    placeholder={t('meetings.comment_placeholder')}
                     className="flex-1 max-h-24 min-h-[40px] bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all resize-none"
                     rows={1}
                     onKeyDown={e => {
@@ -700,7 +703,7 @@ function MeetingDetail() {
                 </div>
               </div>
             ) : (
-              <p className="text-center text-sm text-gray-500 py-2">Войдите, чтобы оставить комментарий</p>
+              <p className="text-center text-sm text-gray-500 py-2">{t('meetings.login_to_comment')}</p>
             )}
           </div>
         </div>
@@ -714,7 +717,7 @@ function MeetingDetail() {
               className={`p-3 rounded-xl border transition-colors ${
                 subscribed ? 'bg-amber-50 border-amber-300 text-amber-600' : 'border-gray-200 text-gray-500 hover:bg-gray-50'
               }`}
-              title={subscribed ? 'Отписаться от уведомлений' : 'Получать уведомления'}>
+              title={subscribed ? t('meetings.unsubscribe') : t('meetings.subscribe')}>
               {subscribed ? <Bell className="w-5 h-5" /> : <BellOff className="w-5 h-5" />}
             </button>
           )}
@@ -723,7 +726,7 @@ function MeetingDetail() {
             className={`flex-1 py-3 rounded-xl font-semibold transition-colors flex items-center justify-center gap-2 ${
               going ? 'bg-emerald-500 text-white' : 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'
             }`}>
-            {going ? <><Check className="w-4 h-4" /> Вы идёте</> : 'Я ПОЕДУ'}
+            {going ? <><Check className="w-4 h-4" /> {t('meetings.i_am_going')}</> : t('meetings.i_will_go')}
           </button>
         </div>
       </div>
@@ -732,30 +735,30 @@ function MeetingDetail() {
       {editingFund && (
         <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center modal-overlay" onClick={() => setEditingFund(false)}>
           <div className="bg-white w-full max-w-md rounded-t-2xl sm:rounded-2xl p-6 animate-slide-up" onClick={e => e.stopPropagation()}>
-            <h2 className="text-xl font-bold text-gray-800 mb-4">Обновить сбор средств</h2>
+            <h2 className="text-xl font-bold text-gray-800 mb-4">{t('meetings.fund_update')}</h2>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Собрано (₽)</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('meetings.fund_goal_label')}</label>
                 <input type="number" value={fundForm.fund_current}
                   onChange={e => setFundForm(f => ({ ...f, fund_current: +e.target.value }))}
                   className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Ссылка CloudTips</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('meetings.fund_cloudtips_label')}</label>
                 <input type="url" value={fundForm.fund_cloudtips_url} placeholder="https://pay.cloudtips.ru/p/..."
                   onChange={e => setFundForm(f => ({ ...f, fund_cloudtips_url: e.target.value }))}
                   className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Инструкция для участников</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('meetings.fund_instructions_label')}</label>
                 <textarea value={fundForm.fund_instructions} rows={3}
                   onChange={e => setFundForm(f => ({ ...f, fund_instructions: e.target.value }))}
-                  placeholder="Как перевести деньги и для чего они нужны..."
+                  placeholder={t('meetings.fund_instructions_placeholder')}
                   className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent resize-none" />
               </div>
               <div className="flex gap-3">
-                <button onClick={() => setEditingFund(false)} className="flex-1 py-3 border border-gray-200 rounded-xl text-gray-600">Отмена</button>
-                <button onClick={handleSaveFund} className="flex-1 bg-emerald-500 text-white py-3 rounded-xl font-medium hover:bg-emerald-600">Сохранить</button>
+                <button onClick={() => setEditingFund(false)} className="flex-1 py-3 border border-gray-200 rounded-xl text-gray-600">{t('common.cancel')}</button>
+                <button onClick={handleSaveFund} className="flex-1 bg-emerald-500 text-white py-3 rounded-xl font-medium hover:bg-emerald-600">{t('common.save')}</button>
               </div>
             </div>
           </div>
@@ -767,7 +770,7 @@ function MeetingDetail() {
         <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center modal-overlay" onClick={() => setShowReportModal(null)}>
           <div className="bg-white w-full max-w-md rounded-t-2xl sm:rounded-2xl p-6 animate-slide-up" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-bold text-gray-800">Пожаловаться</h2>
+              <h2 className="text-xl font-bold text-gray-800">{t('meetings.report')}</h2>
               <button onClick={() => setShowReportModal(null)} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
                 <X className="w-5 h-5 text-gray-500" />
               </button>
@@ -775,14 +778,14 @@ function MeetingDetail() {
             <textarea
               value={reportReason}
               onChange={e => setReportReason(e.target.value)}
-              placeholder="Опишите причину жалобы..."
+              placeholder={t('meetings.report_reason_placeholder')}
               className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-rose-500 focus:border-transparent mb-4 resize-none h-32"
             />
             <button
               onClick={handleReport}
               disabled={submitting || !reportReason.trim()}
               className="w-full bg-rose-500 text-white font-semibold py-3 rounded-xl hover:bg-rose-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-              {submitting ? 'Отправка...' : 'Отправить жалобу'}
+              {submitting ? t('common.sending') : t('meetings.report')}
             </button>
           </div>
         </div>
