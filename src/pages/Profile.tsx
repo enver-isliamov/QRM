@@ -197,37 +197,37 @@ function Profile() {
           if (rCount >= 1) {
             finalBadges.push({
               id: 'helper_1',
-              name: i18n.language === 'crh' ? 'İlk cevap' : 'Первый отклик',
+              name: t('profile.badges_list.helper_1.name'),
               icon: Heart,
               color: BADGE_COLORS['helper_1'],
-              description: i18n.language === 'crh' ? 'Yardım ricasına cevap berdi' : 'Откликнулся на просьбу о помощи'
+              description: t('profile.badges_list.helper_1.desc')
             });
           }
           if (rCount >= 5) {
             finalBadges.push({
               id: 'helper_5',
-              name: i18n.language === 'crh' ? 'İtimatlı yardımcı' : 'Надежный помощник',
+              name: t('profile.badges_list.helper_5.name'),
               icon: Shield,
               color: BADGE_COLORS['helper_5'],
-              description: i18n.language === 'crh' ? '5 kere yardım etti' : 'Помог 5 раз'
+              description: t('profile.badges_list.helper_5.desc')
             });
           }
           if (mCount >= 1) {
             finalBadges.push({
               id: 'organizer',
-              name: i18n.language === 'crh' ? 'Teşkilâtçı' : 'Организатор',
+              name: t('profile.badges_list.organizer.name'),
               icon: Star,
               color: BADGE_COLORS['organizer'],
-              description: i18n.language === 'crh' ? 'Körüşüv teşkil etti' : 'Организовал встречу'
+              description: t('profile.badges_list.organizer.desc')
             });
           }
           if (reqCount >= 1) {
             finalBadges.push({
               id: 'active',
-              name: i18n.language === 'crh' ? 'Faal iştirakçı' : 'Активный участник',
+              name: t('profile.badges_list.active.name'),
               icon: Activity,
               color: BADGE_COLORS['active'],
-              description: i18n.language === 'crh' ? 'Müracaat yarattı' : 'Создал обращение'
+              description: t('profile.badges_list.active.desc')
             });
           }
         }
