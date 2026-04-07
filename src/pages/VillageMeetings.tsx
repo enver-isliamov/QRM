@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { MapPin, Calendar, Plus, X, Bell, Users, ChevronRight, Search, Heart } from 'lucide-react';
 import { format } from 'date-fns';
-import { ru } from 'date-fns/locale';
+import { ru, tr } from 'date-fns/locale';
 import { useNavigate } from 'react-router-dom';
 import { useMeetings } from '../hooks/useMeetings';
 import { useAuth } from '../hooks/useAuth';
@@ -9,9 +9,12 @@ import { MeetingRow } from '../lib/supabase';
 import { Skeleton } from '../components/ui/Skeleton';
 
 function VillageMeetings() {
+  const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const { user } = useAuth();
   const { meetings, loading, toggleAttend, toggleSubscribe, addMeeting, updateMeeting, isGoing, isSubscribed } = useMeetings(user?.id ?? null);
+
+  const dateLocale = i18n.language === 'crh' ? tr : ru;
 
   useEffect(() => {
     if (meetings.length > 0) {
@@ -39,7 +42,7 @@ function VillageMeetings() {
     
     const data = {
       village: form.village, village_crh: form.village,
-      organizer: form.organizer || 'Оргкомитет',
+      organizer: form.organizer || t('meetings.organizer_default'),
       location: form.location || undefined,
       meeting_date: form.meeting_date,
       description: form.description || undefined,
@@ -74,10 +77,10 @@ function VillageMeetings() {
           <div className="flex items-start justify-between mb-2">
             <h3 className="font-semibold text-gray-800 flex-1 pr-2">{m.village}</h3>
             <span className="bg-amber-100 text-amber-700 text-xs font-medium px-2 py-1 rounded whitespace-nowrap">
-              {format(new Date(m.meeting_date), 'd MMMM', { locale: ru })}
+              {format(new Date(m.meeting_date), 'd MMMM', { locale: dateLocale })}
             </span>
           </div>
-          <p className="text-sm text-gray-500 mb-1">Организатор: {m.organizer}</p>
+          <p className="text-sm text-gray-500 mb-1">{t('meetings.organizer')}: {m.organizer}</p>
           {m.location && (
             <div className="flex items-center gap-1 text-rose-500 text-sm mb-1">
               <MapPin className="w-3.5 h-3.5 flex-shrink-0" /><span>{m.location}</span>
@@ -88,12 +91,8 @@ function VillageMeetings() {
           {m.fund_cloudtips_url && (
             <div className="mt-2 flex items-center gap-1.5 text-xs font-medium text-blue-600 bg-blue-50 px-2 py-1 rounded-lg w-fit">
               <Heart className="w-3 h-3 text-rose-500 fill-rose-500" />
-              <span>Сбор средств активен</span>
+              <span>{t('meetings.fund_active')}</span>
             </div>
-          )}
-          {/* ВРЕМЕННЫЙ ДЕБАГ: Если кнопка не видна, этот текст покажет почему */}
-          {!m.fund_cloudtips_url && (
-            <div className="hidden">DEBUG: No URL found for {m.village}</div>
           )}
 
           {progress != null && (
@@ -108,7 +107,7 @@ function VillageMeetings() {
             </div>
           )}
           <div className="flex items-center gap-2 mt-2 text-xs text-gray-400">
-            <Users className="w-3.5 h-3.5" /><span>{m.attendees_count ?? 0} участников</span>
+            <Users className="w-3.5 h-3.5" /><span>{t('meetings.attendees_count', { count: m.attendees_count ?? 0 })}</span>
             <ChevronRight className="w-3.5 h-3.5 ml-auto" />
           </div>
         </button>
@@ -138,7 +137,7 @@ function VillageMeetings() {
           )}
           {!m.meeting_time && user && (
             <button onClick={() => toggleSubscribe(m.id)}
-              title={subbed ? 'Отписаться от уведомлений' : 'Подписаться на уведомления'}
+              title={subbed ? t('meetings.unsubscribe') : t('meetings.subscribe')}
               className={`p-2.5 rounded-lg border transition-colors ${subbed ? 'bg-amber-50 border-amber-300 text-amber-600' : 'border-gray-200 text-gray-400 hover:bg-gray-50'}`}>
               <Bell className="w-4 h-4" />
             </button>
@@ -148,7 +147,7 @@ function VillageMeetings() {
             className={`flex-1 py-2.5 rounded-lg font-semibold text-sm transition-colors ${
               going ? 'bg-emerald-500 text-white' : user ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200' : 'bg-gray-100 text-gray-400'
             }`}>
-            {going ? '✓ Вы идёте' : 'Я ПОЕДУ'}
+            {going ? t('meetings.i_am_going') : t('meetings.i_will_go')}
           </button>
           {m.fund_cloudtips_url && (
             <a
@@ -159,7 +158,7 @@ function VillageMeetings() {
               className="flex items-center justify-center gap-1.5 px-4 py-2.5 bg-rose-500 text-white rounded-lg font-semibold text-sm hover:bg-rose-600 transition-colors"
             >
               <Heart className="w-4 h-4 fill-white" />
-              ПОМОЧЬ
+              {t('meetings.help')}
             </a>
           )}
         </div>
@@ -172,12 +171,12 @@ function VillageMeetings() {
       <div className="bg-white px-4 py-4 border-b border-gray-200">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h1 className="text-xl font-bold text-gray-800">Встречи сёл</h1>
-            <p className="text-sm text-gray-500">События и мероприятия</p>
+            <h1 className="text-xl font-bold text-gray-800">{t('meetings.title')}</h1>
+            <p className="text-sm text-gray-500">{t('meetings.subtitle')}</p>
           </div>
           {user && (
             <button onClick={() => setShowAdd(true)} className="flex items-center gap-1 bg-emerald-500 text-white px-3 py-2 rounded-lg text-sm font-medium">
-              <Plus className="w-4 h-4" />Добавить
+              <Plus className="w-4 h-4" />{t('meetings.add')}
             </button>
           )}
         </div>
@@ -185,7 +184,7 @@ function VillageMeetings() {
           <Search className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
           <input
             type="text"
-            placeholder="Поиск по селу, организатору..."
+            placeholder={t('meetings.search_placeholder')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500"
@@ -194,7 +193,7 @@ function VillageMeetings() {
       </div>
 
       <div className="p-4 pb-24">
-        <h2 className="text-lg font-bold text-gray-800 mb-3">Предстоящие встречи</h2>
+        <h2 className="text-lg font-bold text-gray-800 mb-3">{t('meetings.upcoming')}</h2>
         {loading ? (
           <div className="space-y-4">
             {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-48 w-full rounded-xl" />)}
@@ -204,9 +203,9 @@ function VillageMeetings() {
             <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4">
               <Calendar className="w-8 h-8 text-gray-300" />
             </div>
-            <p className="text-gray-800 font-semibold text-lg">Нет предстоящих встреч</p>
+            <p className="text-gray-800 font-semibold text-lg">{t('meetings.no_upcoming')}</p>
             <p className="text-gray-500 mt-2 max-w-[240px] mx-auto">
-              Пока никто не запланировал встречу. Если вы организатор, нажмите «Добавить».
+              {t('meetings.no_upcoming_desc')}
             </p>
           </div>
         ) : (
@@ -215,7 +214,7 @@ function VillageMeetings() {
 
         {!user && (
           <div className="mt-4 bg-amber-50 border border-amber-200 rounded-xl p-4">
-            <p className="text-sm text-amber-700">Войдите, чтобы записаться на встречу и получать уведомления.</p>
+            <p className="text-sm text-amber-700">{t('meetings.login_prompt')}</p>
           </div>
         )}
       </div>
@@ -225,23 +224,23 @@ function VillageMeetings() {
         <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center modal-overlay" onClick={() => { setShowAdd(false); setEditingId(null); }}>
           <div className="bg-white w-full max-w-md rounded-t-2xl sm:rounded-2xl p-6 animate-slide-up max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-bold text-gray-800">{editingId ? 'Редактировать встречу' : 'Новая встреча'}</h2>
+              <h2 className="text-xl font-bold text-gray-800">{editingId ? t('meetings.edit_title') : t('meetings.new_title')}</h2>
               <button onClick={() => { setShowAdd(false); setEditingId(null); }}><X className="w-6 h-6 text-gray-400" /></button>
             </div>
             <div className="space-y-4">
               {[
-                ['village', 'Село / населённый пункт *', 'с. Ускут', 'text'],
-                ['organizer', 'Организатор', 'Совет старейшин', 'text'],
-                ['organizer_phone', 'Телефон организатора', '+7 (978) 000-00-00', 'tel'],
-                ['location', 'Место проведения', 'Поляна "Кок-Асан"', 'text'],
-                ['meeting_date', 'Дата *', '', 'date'],
-                ['fund_purpose', 'Цель сбора (если есть)', 'Реставрация чешме', 'text'],
-                ['fund_goal', 'Сумма сбора (₽)', '500000', 'number'],
-                ['fund_cloudtips_url', 'Ссылка CloudTips', 'https://pay.cloudtips.ru/...', 'url'],
-              ].map(([f, l, ph, t]) => (
+                ['village', t('meetings.village_label'), t('meetings.village_placeholder'), 'text'],
+                ['organizer', t('meetings.organizer_label'), t('meetings.organizer_default'), 'text'],
+                ['organizer_phone', t('meetings.phone_label'), '+7 (978) 000-00-00', 'tel'],
+                ['location', t('meetings.location_label'), t('meetings.location_placeholder'), 'text'],
+                ['meeting_date', t('meetings.date_label'), '', 'date'],
+                ['fund_purpose', t('meetings.fund_purpose_label'), t('meetings.fund_purpose_placeholder'), 'text'],
+                ['fund_goal', t('meetings.fund_goal_label'), '500000', 'number'],
+                ['fund_cloudtips_url', t('meetings.fund_cloudtips_label'), 'https://pay.cloudtips.ru/...', 'url'],
+              ].map(([f, l, ph, t_field]) => (
                 <div key={f}>
                   <label className="block text-sm font-medium text-gray-700 mb-1">{l}</label>
-                  <input type={t} value={(form as any)[f]} placeholder={ph}
+                  <input type={t_field as string} value={(form as any)[f]} placeholder={ph as string}
                     onChange={e => {
                       let val = e.target.value;
                       if (f === 'organizer_phone') {
@@ -257,14 +256,14 @@ function VillageMeetings() {
                 </div>
               ))}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Описание</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('meetings.description_label')}</label>
                 <textarea value={form.description} rows={3}
                   onChange={e => setForm(prev => ({ ...prev, description: e.target.value }))}
                   className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent resize-none" />
               </div>
               <button onClick={handleAdd} disabled={!form.village || !form.meeting_date || submitting}
                 className="w-full bg-emerald-500 text-white font-semibold py-3 rounded-xl hover:bg-emerald-600 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed">
-                {submitting ? 'Сохранение...' : (editingId ? 'Сохранить изменения' : 'Создать встречу')}
+                {submitting ? t('meetings.saving') : (editingId ? t('meetings.save_changes') : t('meetings.create_meeting'))}
               </button>
             </div>
           </div>
