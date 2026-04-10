@@ -3,35 +3,16 @@ import { User, MapPin, ChevronLeft, Bell, Heart } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 import { useNotifications } from '../hooks/useNotifications'
 
-// Titles for each route
-const PAGE_TITLES: Record<string, string> = {
-  '/': 'ORAZA',
-  '/prayer-times': 'Намазы',
-  '/ethno-calendar': 'Этно-календарь',
-  '/rituals': 'Обрядовый гид',
-  '/micro-yardym': 'Микро-Ярдым',
-  '/village-meetings': 'Встречи сёл',
-  '/notifications': 'Уведомления',
-  '/profile': 'Профиль',
-  '/support': 'Поддержка',
-  '/admin': 'Админ-панель',
-  '/login': 'Вход',
-}
-
 export default function Header() {
   const navigate = useNavigate()
   const location = useLocation()
   const { isAuthenticated, profile } = useAuth()
   const { unreadCount } = useNotifications(profile?.id ?? null)
 
-  const isHome = location.pathname === '/'
   const isLogin = location.pathname === '/login'
   const isCallback = location.pathname === '/auth/callback'
-  const showBack = !isHome && !isLogin && !isCallback
-
-  // Dynamic title
-  const title = PAGE_TITLES[location.pathname] ?? 'ORAZA'
-  const isHomeTitle = title === 'ORAZA'
+  const sectionPaths = ['/village-meetings', '/micro-yardym', '/rituals', '/ethno-calendar']
+  const showBack = location.pathname !== '/' && !isLogin && !isCallback && !sectionPaths.includes(location.pathname)
 
   return (
     <header className="bg-white sticky top-0 z-50 safe-area-top border-b border-gray-100 shadow-sm">
@@ -44,25 +25,17 @@ export default function Header() {
             </button>
           ) : null}
           <button onClick={() => navigate('/')} className="flex items-center gap-1.5 min-w-0">
-            {isHomeTitle ? (
-              <>
-                <span className="text-xl font-bold text-emerald-600">ORAZA</span>
-                <span className="text-xs text-gray-400">.RU</span>
-              </>
-            ) : (
-              <span className="text-lg font-semibold text-gray-800 truncate">{title}</span>
-            )}
+            <span className="text-xl font-bold text-emerald-600">ORAZA</span>
+            <span className="text-xs text-gray-400">.RU</span>
           </button>
         </div>
 
         {/* Right: location + profile/bell */}
         <div className="flex items-center gap-2 flex-shrink-0">
-          {isHomeTitle && (
-            <div className="flex items-center gap-1 text-gray-400 mr-1">
-              <MapPin className="w-3.5 h-3.5" />
-              <span className="text-xs">Крым</span>
-            </div>
-          )}
+          <div className="flex items-center gap-1 text-gray-400 mr-1">
+            <MapPin className="w-3.5 h-3.5" />
+            <span className="text-xs">Крым</span>
+          </div>
 
           {/* Support icon */}
           <button onClick={() => navigate('/support')} className="p-1.5 touch-feedback text-rose-500 hover:scale-110 transition-transform">
