@@ -8,8 +8,10 @@ const resources = {
       "nav": {
         "home": "Главная",
         "namaz": "Намаз",
-        "calendar": "Календарь",
-        "yardym": "Ярдым",
+        "calendar": "Этно-календарь",
+        "yardym": "Микро-Ярдым",
+        "meetings": "Встречи сёл",
+        "rituals": "Обрядовый гид",
         "profile": "Профиль",
         "sections": "Разделы"
       },
@@ -528,8 +530,10 @@ const resources = {
       "nav": {
         "home": "Baş saife",
         "namaz": "Namaz",
-        "calendar": "Taqvim",
-        "yardym": "Yardım",
+        "calendar": "Etno-taqvim",
+        "yardym": "Mikro-Yardım",
+        "meetings": "Köyler körüşüvi",
+        "rituals": "Adetler rehberi",
         "profile": "Profil",
         "sections": "Bölükler"
       },

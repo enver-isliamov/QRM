@@ -2,6 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { BookOpen } from 'lucide-react';
 import { useRituals } from '../hooks/useRituals';
+import SectionTabs from '../components/SectionTabs';
 
 function Rituals() {
   const navigate = useNavigate();
@@ -21,12 +22,14 @@ function Rituals() {
 
   return (
     <div className="animate-fade-in min-h-screen bg-gray-50">
-      <div className="bg-white px-4 py-4 border-b border-gray-200">
-        <h1 className="text-xl font-bold text-gray-800">{t('rituals.title')}</h1>
-        <p className="text-sm text-gray-500">{t('rituals.subtitle')}</p>
-      </div>
-
+      <SectionTabs />
+      
       <div className="p-4 pb-20">
+        <div className="mb-4">
+          <h1 className="text-xl font-bold text-gray-800">{t('rituals.title')}</h1>
+          <p className="text-sm text-gray-500">{t('rituals.subtitle')}</p>
+        </div>
+
         <h2 className="text-lg font-bold text-gray-800 mb-3">{t('rituals.protocols')}</h2>
 
         {loading ? (

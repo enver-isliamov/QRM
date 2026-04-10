@@ -1,5 +1,5 @@
 import { useNavigate, useLocation } from 'react-router-dom'
-import { User, MapPin, ChevronLeft, Bell } from 'lucide-react'
+import { User, MapPin, ChevronLeft, Bell, Heart } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 import { useNotifications } from '../hooks/useNotifications'
 
@@ -58,11 +58,16 @@ export default function Header() {
         {/* Right: location + profile/bell */}
         <div className="flex items-center gap-2 flex-shrink-0">
           {isHomeTitle && (
-            <div className="flex items-center gap-1 text-gray-400">
+            <div className="flex items-center gap-1 text-gray-400 mr-1">
               <MapPin className="w-3.5 h-3.5" />
               <span className="text-xs">Крым</span>
             </div>
           )}
+
+          {/* Support icon */}
+          <button onClick={() => navigate('/support')} className="p-1.5 touch-feedback text-rose-500 hover:scale-110 transition-transform">
+            <Heart className="w-5 h-5 fill-rose-500" />
+          </button>
 
           {/* Notification bell - only when logged in */}
           {isAuthenticated && !isLogin && (

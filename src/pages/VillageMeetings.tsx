@@ -8,6 +8,7 @@ import { useMeetings } from '../hooks/useMeetings';
 import { useAuth } from '../hooks/useAuth';
 import { MeetingRow } from '../lib/supabase';
 import { Skeleton } from '../components/ui/Skeleton';
+import SectionTabs from '../components/SectionTabs';
 
 function VillageMeetings() {
   const { t, i18n } = useTranslation();
@@ -169,7 +170,9 @@ function VillageMeetings() {
 
   return (
     <div className="animate-fade-in min-h-screen bg-gray-50">
-      <div className="bg-white px-4 py-4 border-b border-gray-200">
+      <SectionTabs />
+      
+      <div className="p-4">
         <div className="flex items-center justify-between mb-4">
           <div>
             <h1 className="text-xl font-bold text-gray-800">{t('meetings.title')}</h1>

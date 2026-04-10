@@ -9,6 +9,7 @@ import { useAuth } from '../hooks/useAuth';
 import { HelpRequestRow, HelpRequestCommentRow, supabase } from '../lib/supabase';
 import { useStore } from '../store/useStore';
 import { Skeleton } from '../components/ui/Skeleton';
+import SectionTabs from '../components/SectionTabs';
 
 type NewReq = { type: 'blood' | 'money' | 'other'; urgency: 'urgent' | 'normal'; title: string; location: string; description: string; contact_phone: string; cloudtips_url?: string };
 
@@ -431,7 +432,9 @@ function MicroYardym() {
 
   return (
     <div className="animate-fade-in min-h-screen bg-gray-50">
-      <div className="bg-white px-4 py-4 border-b border-gray-200">
+      <SectionTabs />
+      
+      <div className="p-4">
         <div className="flex items-center justify-between mb-4">
           <div>
             <h1 className="text-xl font-bold text-gray-800">{t('yardym.title')}</h1>
