@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ChevronLeft, MapPin, Calendar, Users, Bell, BellOff, Heart, ExternalLink, Phone, Mail, Check, Edit, Copy, MessageCircle, Send, X, Flag } from 'lucide-react';
@@ -74,8 +75,8 @@ function MeetingDetail() {
           .single();
         
         if (data && !error) {
-          setComments(prev => {
-            if (prev.some(c => c.id === data.id)) return prev;
+          setComments((prev: any[]) => {
+            if (prev.some((c: any) => c.id === data.id)) return prev;
             return [...prev, data];
           });
         }
@@ -162,7 +163,7 @@ function MeetingDetail() {
       .single();
     
     if (data && !error) {
-      setComments(prev => [...prev, data]);
+      setComments((prev: any[]) => [...prev, data]);
       setNewComment('');
       setReplyTo(null);
       
@@ -179,7 +180,7 @@ function MeetingDetail() {
 
       // If it's a reply, notify the parent comment author
       if (replyTo) {
-        const parentComment = comments.find(c => c.id === replyTo);
+        const parentComment = comments.find((c: any) => c.id === replyTo);
         if (parentComment && parentComment.author_id !== user.id) {
           await supabase.from('user_notifications').insert({
             user_id: parentComment.author_id,
@@ -502,7 +503,7 @@ function MeetingDetail() {
               </div>
             ) : (
               <div className="space-y-4">
-                {comments.filter(c => !c.parent_id).map(comment => (
+                {comments.filter((c: any) => !c.parent_id).map((comment: any) => (
                   <div key={comment.id} className="space-y-3">
                     <div className={`flex gap-3 ${comment.author_id === user?.id ? 'flex-row-reverse' : ''}`}>
                       <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0 overflow-hidden">
@@ -567,7 +568,7 @@ function MeetingDetail() {
                     </div>
 
                     {/* Replies */}
-                    {comments.filter(r => r.parent_id === comment.id).map(reply => (
+                    {comments.filter((r: any) => r.parent_id === comment.id).map((reply: any) => (
                       <div key={reply.id} className={`flex gap-2 ml-8 ${reply.author_id === user?.id ? 'flex-row-reverse' : ''}`}>
                         <div className="w-6 h-6 rounded-full bg-emerald-50 flex items-center justify-center flex-shrink-0 overflow-hidden">
                           {reply.author?.avatar_url ? (
@@ -632,7 +633,7 @@ function MeetingDetail() {
               <div className="space-y-2 relative">
                 {showMentions && mentionSuggestions.length > 0 && (
                   <div className="absolute bottom-full left-0 w-full bg-white border border-gray-200 rounded-xl shadow-xl mb-2 overflow-hidden z-[120]">
-                    {mentionSuggestions.map((s, idx) => (
+                    {mentionSuggestions.map((s: any, idx: number) => (
                       <button
                         key={s.id}
                         onClick={() => insertMention(s)}
@@ -656,7 +657,7 @@ function MeetingDetail() {
                 {replyTo && (
                   <div className="flex items-center justify-between bg-gray-50 px-3 py-1 rounded-lg border border-gray-100">
                     <p className="text-[10px] text-gray-500">
-                      {t('meetings.reply_to')} <span className="font-bold text-emerald-600">{comments.find(c => c.id === replyTo)?.author?.name}</span>
+                      {t('meetings.reply_to')} <span className="font-bold text-emerald-600">{comments.find((c: any) => c.id === replyTo)?.author?.name}</span>
                     </p>
                     <button onClick={() => { setReplyTo(null); setNewComment(''); }} className="text-gray-400 hover:text-rose-500">
                       <X className="w-3 h-3" />
@@ -674,10 +675,10 @@ function MeetingDetail() {
                       if (showMentions && mentionSuggestions.length > 0) {
                         if (e.key === 'ArrowDown') {
                           e.preventDefault();
-                          setMentionIndex(prev => (prev + 1) % mentionSuggestions.length);
+                          setMentionIndex((prev: number) => (prev + 1) % mentionSuggestions.length);
                         } else if (e.key === 'ArrowUp') {
                           e.preventDefault();
-                          setMentionIndex(prev => (prev - 1 + mentionSuggestions.length) % mentionSuggestions.length);
+                          setMentionIndex((prev: number) => (prev - 1 + mentionSuggestions.length) % mentionSuggestions.length);
                         } else if (e.key === 'Enter' || e.key === 'Tab') {
                           e.preventDefault();
                           if (mentionIndex >= 0) {
@@ -740,19 +741,19 @@ function MeetingDetail() {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">{t('meetings.fund_goal_label')}</label>
                 <input type="number" value={fundForm.fund_current}
-                  onChange={e => setFundForm(f => ({ ...f, fund_current: +e.target.value }))}
+                  onChange={e => setFundForm((f: any) => ({ ...f, fund_current: +e.target.value }))}
                   className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent" />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">{t('meetings.fund_cloudtips_label')}</label>
                 <input type="url" value={fundForm.fund_cloudtips_url} placeholder="https://pay.cloudtips.ru/p/..."
-                  onChange={e => setFundForm(f => ({ ...f, fund_cloudtips_url: e.target.value }))}
+                  onChange={e => setFundForm((f: any) => ({ ...f, fund_cloudtips_url: e.target.value }))}
                   className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent" />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">{t('meetings.fund_instructions_label')}</label>
                 <textarea value={fundForm.fund_instructions} rows={3}
-                  onChange={e => setFundForm(f => ({ ...f, fund_instructions: e.target.value }))}
+                  onChange={e => setFundForm((f: any) => ({ ...f, fund_instructions: e.target.value }))}
                   placeholder={t('meetings.fund_instructions_placeholder')}
                   className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent resize-none" />
               </div>

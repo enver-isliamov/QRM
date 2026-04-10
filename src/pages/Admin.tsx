@@ -67,22 +67,22 @@ export default function Admin() {
 
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: string | number; type: 'event' | 'ritual' | 'step'; title: string } | null>(null)
 
-  const loadTab = useCallback(async (t: Tab) => {
+  const loadTab = useCallback(async (tabName: Tab) => {
     setLoading(true)
     try {
-      if (t === 'stats' && !isModerator) {
+      if (tabName === 'stats' && !isModerator) {
         const { data } = await supabase.from('admin_stats').select('*').single()
         if (data) setStats(data as any)
       }
-      if (t === 'events') {
+      if (tabName === 'events') {
         const { data } = await supabase.from('ethno_events').select('*').order('event_date')
         if (data) setEvents(data as EventRow[])
       }
-      if (t === 'help') {
+      if (tabName === 'help') {
         const { data } = await supabase.from('help_requests_with_count').select('*').order('created_at', { ascending: false })
         if (data) setHelpReqs(data as HelpRow[])
       }
-      if (t === 'moderation') {
+      if (tabName === 'moderation') {
         const { data } = await supabase.from('help_requests_with_count').select('*').eq('status', 'pending').order('created_at', { ascending: false })
         if (data) setHelpReqs(data as HelpRow[])
         const { data: reportsData } = await supabase.from('reports').select('*').order('created_at', { ascending: false })
@@ -90,14 +90,14 @@ export default function Admin() {
         const { data: auditData } = await supabase.from('audit_logs').select('*, admin:profiles!audit_logs_admin_id_fkey(name, email)').order('created_at', { ascending: false }).limit(50)
         if (auditData) setAuditLogs(auditData as AuditLogRow[])
       }
-      if (t === 'meetings') {
+      if (tabName === 'meetings') {
         // Используем VIEW meetings_with_stats для получения вычисляемых полей
         const { data, error } = await supabase.from('meetings_with_stats').select('*').order('meeting_date', { ascending: false })
         console.log('DEBUG: Meetings from view:', data);
         if (error) console.error('DEBUG: Fetch error:', error);
         if (data) setMeetingList(data as MeetRow[])
       }
-      if (t === 'rituals') {
+      if (tabName === 'rituals') {
         const { data } = await supabase.from('rituals').select('*').order('sort_order')
         if (data) setRituals(data as RitualRow[])
         setSelectedRitual(null)
@@ -109,7 +109,7 @@ export default function Admin() {
     } finally {
       setLoading(false)
     }
-  }, [isModerator])
+  }, [isModerator, t])
 
   useEffect(() => { loadTab(tab) }, [tab, loadTab])
 

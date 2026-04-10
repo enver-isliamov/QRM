@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { MapPin, Calendar, Plus, X, Bell, Users, ChevronRight, Search, Heart } from 'lucide-react';
 import { format } from 'date-fns';
@@ -250,7 +251,7 @@ function VillageMeetings() {
                         else val = `+${x[1] || '7'} (${x[2]}${x[3] ? `) ${x[3]}` : ''}${x[4] ? `-${x[4]}` : ''}${x[5] ? `-${x[5]}` : ''}`;
                         if (val.length > 18) val = val.substring(0, 18);
                       }
-                      setForm(prev => ({ ...prev, [f]: val }));
+                      setForm((prev: any) => ({ ...prev, [f]: val }));
                     }}
                     className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent" />
                 </div>
@@ -258,7 +259,7 @@ function VillageMeetings() {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">{t('meetings.description_label')}</label>
                 <textarea value={form.description} rows={3}
-                  onChange={e => setForm(prev => ({ ...prev, description: e.target.value }))}
+                  onChange={e => setForm((prev: any) => ({ ...prev, description: e.target.value }))}
                   className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent resize-none" />
               </div>
               <button onClick={handleAdd} disabled={!form.village || !form.meeting_date || submitting}
