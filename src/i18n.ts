@@ -8,10 +8,10 @@ const resources = {
       "nav": {
         "home": "Главная",
         "namaz": "Намаз",
-        "calendar": "Этно-календарь",
-        "yardym": "Микро-Ярдым",
-        "meetings": "Встречи сёл",
-        "rituals": "Обрядовый гид",
+        "calendar": "Календарь",
+        "yardym": "Ярдым",
+        "meetings": "Койдешлер",
+        "rituals": "Обряды",
         "profile": "Профиль",
         "sections": "Разделы"
       },
@@ -63,7 +63,7 @@ const resources = {
         "next_prayer": "До",
         "prayer_done": "Выполнено сегодня",
         "upcoming_events": "Ближайшие события",
-        "village_meetings": "Встречи сёл",
+        "village_meetings": "Койдешлер",
         "welcome_guest": "Селям алейкум!",
         "welcome_user": "Селям, {{name}}!",
         "today": "сегодня",
@@ -188,7 +188,7 @@ const resources = {
         "isha_desc": "Ночной намаз"
       },
       "calendar": {
-        "title": "Этно-календарь",
+        "title": "Календарь",
         "subtitle": "Крымскотатарские праздники и памятные даты",
         "holidays": "Праздники",
         "memorial_days": "Дни памяти",
@@ -210,7 +210,7 @@ const resources = {
         "sun": "Вс"
       },
       "rituals": {
-        "title": "Обрядовый гид",
+        "title": "Обряды",
         "subtitle": "Традиции и обряды крымских татар",
         "protocols": "Порядок действий (Протоколы)",
         "about_title": "О традициях",
@@ -225,7 +225,7 @@ const resources = {
         "note_desc": "Традиции могут немного отличаться в разных регионах и семьях. Рекомендуется консультироваться со старейшинами и религиозными деятелями."
       },
       "meetings": {
-        "title": "Встречи сёл",
+        "title": "Койдешлер",
         "subtitle": "События и мероприятия",
         "add": "Добавить",
         "search_placeholder": "Поиск по селу, организатору...",
@@ -352,10 +352,10 @@ const resources = {
         "title": "Разделы",
         "subtitle": "Все функции приложения",
         "prayer_times": "Время намаза",
-        "ethno_calendar": "Этно-календарь",
-        "rituals": "Обрядовый гид",
-        "yardym": "Микро-Ярдым",
-        "meetings": "Встречи сёл",
+        "ethno_calendar": "Календарь",
+        "rituals": "Обряды",
+        "yardym": "Ярдым",
+        "meetings": "Койдешлер",
         "meetings_sub": "События и сборы",
         "yardym_sub": "Взаимопомощь",
         "calendar_sub": "Праздники",
@@ -387,7 +387,7 @@ const resources = {
         "contact_us": "Связаться с нами"
       },
       "yardym": {
-        "title": "Микро-Ярдым",
+        "title": "Ярдым",
         "subtitle": "Взаимопомощь сообщества",
         "add": "Добавить",
         "search_placeholder": "Поиск по селу, описанию...",
@@ -530,10 +530,10 @@ const resources = {
       "nav": {
         "home": "Baş saife",
         "namaz": "Namaz",
-        "calendar": "Etno-taqvim",
-        "yardym": "Mikro-Yardım",
-        "meetings": "Köyler körüşüvi",
-        "rituals": "Adetler rehberi",
+        "calendar": "Taqvim",
+        "yardym": "Yardım",
+        "meetings": "Qoydeşler",
+        "rituals": "Adetler",
         "profile": "Profil",
         "sections": "Bölükler"
       },
@@ -585,7 +585,7 @@ const resources = {
         "next_prayer": "Nevbetteki",
         "prayer_done": "Bugün eda etildi",
         "upcoming_events": "Yaqın vaqıttaki vaqialar",
-        "village_meetings": "Köy körüşüvleri",
+        "village_meetings": "Qoydeşler",
         "welcome_guest": "Selâm aleykum!",
         "welcome_user": "Selâm, {{name}}!",
         "today": "bugün",
@@ -732,7 +732,7 @@ const resources = {
         "sun": "Baz"
       },
       "rituals": {
-        "title": "Merasimler",
+        "title": "Adetler",
         "subtitle": "Qırımtatarlarnıñ adetleri ve merasimleri",
         "protocols": "Areket tertibi (Protokollar)",
         "about_title": "Adetler aqqında",
@@ -747,7 +747,7 @@ const resources = {
         "note_desc": "Adetler çeşit bölgelerde ve ailelerde biraz farqlı ola bile. Qartlar ve diniy erbaplarnen danışmaq tavsiye etile."
       },
       "meetings": {
-        "title": "Köy körüşüvleri",
+        "title": "Qoydeşler",
         "subtitle": "Vaqialar ve tedbirler",
         "add": "Qoшmaq",
         "search_placeholder": "Köy, teşkilâtçı boyunça qıdırış...",
@@ -867,10 +867,10 @@ const resources = {
         "title": "Bölükler",
         "subtitle": "Uygulamanıñ bütün funktsiyaları",
         "prayer_times": "Namaz vaqıtları",
-        "ethno_calendar": "Etno-taqvim",
-        "rituals": "Merasimler",
-        "yardym": "Mikro-Yardım",
-        "meetings": "Köy körüşüvleri",
+        "ethno_calendar": "Taqvim",
+        "rituals": "Adetler",
+        "yardym": "Yardım",
+        "meetings": "Qoydeşler",
         "meetings_sub": "Vaqialar ve toplavlar",
         "yardym_sub": "Yardımlaşuv",
         "calendar_sub": "Bayramlar",
@@ -902,7 +902,7 @@ const resources = {
         "contact_us": "Biznen bağlanmaq"
       },
       "yardym": {
-        "title": "Mikro-Yardım",
+        "title": "Yardım",
         "subtitle": "Cemaat yardımlaşuvı",
         "add": "Qoşmaq",
         "search_placeholder": "Köy, tasvir boyunça qıdırış...",
