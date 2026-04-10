@@ -29,7 +29,7 @@ export default function Home() {
   const { urgent, loading: helpLoading } = useHelpRequests()
   const { meetings, loading: meetingsLoading } = useMeetings(user?.id)
 
-  const upcomingEvents = useMemo(() => upcoming(1), [upcoming])
+  const upcomingEvents = useMemo(() => upcoming(3), [upcoming])
   const urgentHelp = useMemo(() => urgent[0], [urgent])
   const upcomingMeeting = useMemo(() => meetings[0], [meetings])
 
