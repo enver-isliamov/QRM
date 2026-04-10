@@ -1,9 +1,6 @@
 import { DailyPrayers } from '../../types';
 
-// ─── СТАТИЧЕСКИЕ ДАННЫЕ: МАРТ–АПРЕЛЬ 2026 ────────────────────────────────────
-// Источник: ДУМ Республики Крым (qmdi.ru)
-
-const staticPrayerData2026: Record<string, DailyPrayers> = {
+export const prayerTimes2026: Record<string, DailyPrayers> = {
   '2026-03-21': { date: '2026-03-21', fajr: '05:17', sunrise: '06:34', dhuhr: '12:55', asr: '16:15', maghrib: '19:06', isha: '20:23' },
   '2026-03-22': { date: '2026-03-22', fajr: '05:15', sunrise: '06:32', dhuhr: '12:55', asr: '16:16', maghrib: '19:07', isha: '20:25' },
   '2026-03-23': { date: '2026-03-23', fajr: '05:13', sunrise: '06:30', dhuhr: '12:54', asr: '16:17', maghrib: '19:09', isha: '20:26' },
@@ -47,98 +44,6 @@ const staticPrayerData2026: Record<string, DailyPrayers> = {
   '2026-04-30': { date: '2026-04-30', fajr: '03:57', sunrise: '05:14', dhuhr: '12:45', asr: '16:55', maghrib: '19:59', isha: '21:23' },
 };
 
-// ─── ОПОРНЫЕ ТОЧКИ ДЛЯ ИНТЕРПОЛЯЦИИ ─────────────────────────────────────────
-// Астрономические данные для Симферополя (44.95°N, 34.10°E, UTC+3)
-// Расчёт на основе солнцестояний и равноденствий по методике ДУМ Крыма
-// Формат: [дата, фаджр, восход, зухр, аср, магриб, иша] в минутах от полуночи
-
-const REF_POINTS: [string, number, number, number, number, number, number][] = [
-  // 2026 - точные опорные точки
-  ['2026-04-30',  237, 314, 765, 1015, 1199, 1283], // 30 апреля
-  ['2026-06-21',  167, 262, 768, 1040, 1243, 1363], // Летнее солнцестояние
-  ['2026-09-22',  313, 373, 753,  968, 1133, 1215], // Осеннее равноденствие
-  ['2026-12-21',  417, 472, 744,  881, 1016, 1091], // Зимнее солнцестояние
-  // 2027 — тот же солнечный цикл (+1 день к солнцестояниям)
-  ['2027-03-21',  317, 394, 775,  975, 1146, 1223], // Весеннее равноденствие
-  ['2027-06-21',  167, 262, 768, 1040, 1243, 1363], // Летнее солнцестояние
-  ['2027-09-22',  313, 373, 753,  968, 1133, 1215], // Осеннее равноденствие
-  ['2027-12-21',  417, 472, 744,  881, 1016, 1091], // Зимнее солнцестояние
-  ['2027-12-31',  418, 472, 748,  885, 1024, 1099], // 31 декабря 2027
-];
-
-// ─── ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ──────────────────────────────────────────────────
-
-/** Форматирует минуты от полуночи в строку HH:MM */
-function toHHMM(minutes: number): string {
-  const totalMinutes = Math.round(minutes);
-  const h = Math.floor(totalMinutes / 60) % 24;
-  const m = totalMinutes % 60;
-  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
-}
-
-/** Вычисляет время намазов для заданной даты через линейную интерполяцию */
-function computePrayerTimesForDate(dateStr: string): DailyPrayers | null {
-  const [yr, mo, da] = dateStr.split('-').map(Number);
-  const target = Date.UTC(yr, mo - 1, da, 12, 0, 0);
-
-  const refs = REF_POINTS.map(r => {
-    const [ry, rm, rd] = r[0].split('-').map(Number);
-    return {
-      t: Date.UTC(ry, rm - 1, rd, 12, 0, 0),
-      v: r.slice(1) as [number, number, number, number, number, number],
-    };
-  });
-
-  let before: (typeof refs)[0] | null = null;
-  let after:  (typeof refs)[0] | null = null;
-
-  for (let i = 0; i < refs.length - 1; i++) {
-    if (refs[i].t <= target && target <= refs[i + 1].t) {
-      before = refs[i];
-      after  = refs[i + 1];
-      break;
-    }
-  }
-
-  if (!before || !after) return null;
-
-  const ratio = (target - before.t) / (after.t - before.t);
-  const [f, s, d, a, m, i] = before.v.map((v, idx) => v + ratio * (after.v[idx] - v));
-
-  return { date: dateStr, fajr: toHHMM(f), sunrise: toHHMM(s), dhuhr: toHHMM(d), asr: toHHMM(a), maghrib: toHHMM(m), isha: toHHMM(i) };
-}
-
-/** Генерирует данные намазов для диапазона дат */
-function generatePrayerDataRange(from: string, to: string): Record<string, DailyPrayers> {
-  const result: Record<string, DailyPrayers> = {};
-  const [fy, fm, fd] = from.split('-').map(Number);
-  const [ty, tm, td] = to.split('-').map(Number);
-
-  const startTs = Date.UTC(fy, fm - 1, fd, 12, 0, 0);
-  const endTs   = Date.UTC(ty, tm - 1, td, 12, 0, 0);
-
-  for (let ts = startTs; ts <= endTs; ts += 86_400_000) {
-    const d = new Date(ts);
-    const dateStr = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
-    const entry = computePrayerTimesForDate(dateStr);
-    if (entry) result[dateStr] = entry;
-  }
-
-  return result;
-}
-
-// ─── ЭКСПОРТИРУЕМЫЙ ОБЪЕКТ ────────────────────────────────────────────────────
-// Содержит точные данные ДУМ Крыма за март–апрель 2026
-// + расчётные данные (линейная интерполяция по солнцестояниям/равноденствиям)
-// для 1 мая 2026 — 31 декабря 2027
-
-export const prayerTimes2026: Record<string, DailyPrayers> = {
-  ...staticPrayerData2026,
-  ...generatePrayerDataRange('2026-05-01', '2027-12-31'),
-};
-
-// ─── УТИЛИТЫ ──────────────────────────────────────────────────────────────────
-
 export function getTodayPrayers(): DailyPrayers | null {
   const today = new Date().toISOString().split('T')[0];
   return prayerTimes2026[today] || null;
@@ -149,10 +54,10 @@ export function getPrayersForDate(date: string): DailyPrayers | null {
 }
 
 export const prayerNames = [
-  { key: 'fajr',    name: 'Фаджр',   nameCrh: 'Фаджр',           arabic: 'الفجر',  description: 'Утренний намаз' },
-  { key: 'sunrise', name: 'Восход',  nameCrh: 'Къуняш чыкъышы',  arabic: 'شروق',   description: 'Восход солнца' },
-  { key: 'dhuhr',   name: 'Зухр',    nameCrh: 'Зухр',             arabic: 'الظهر',  description: 'Полуденный намаз' },
-  { key: 'asr',     name: 'Аср',     nameCrh: 'Аср',              arabic: 'العصر',  description: 'Послеполуденный намаз' },
-  { key: 'maghrib', name: 'Магриб',  nameCrh: 'Магриб',           arabic: 'المغرب', description: 'Вечерний намаз' },
-  { key: 'isha',    name: 'Иша',     nameCrh: 'Иша',              arabic: 'العشاء', description: 'Ночной намаз' },
+  { key: 'fajr',    name: 'Фаджр',   nameCrh: 'Фаджр',              arabic: 'الفجر',  description: 'Утренний намаз' },
+  { key: 'sunrise', name: 'Восход',  nameCrh: 'Къуняш чыкъышы',     arabic: 'شروق',   description: 'Восход солнца' },
+  { key: 'dhuhr',   name: 'Зухр',    nameCrh: 'Зухр',                arabic: 'الظهر',  description: 'Полуденный намаз' },
+  { key: 'asr',     name: 'Аср',     nameCrh: 'Аср',                 arabic: 'العصر',  description: 'Послеполуденный намаз' },
+  { key: 'maghrib', name: 'Магриб',  nameCrh: 'Магриб',              arabic: 'المغرب', description: 'Вечерний намаз' },
+  { key: 'isha',    name: 'Иша',     nameCrh: 'Иша',                 arabic: 'العشاء', description: 'Ночной намаз' },
 ];
