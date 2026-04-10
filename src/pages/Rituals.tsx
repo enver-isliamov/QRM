@@ -25,11 +25,6 @@ function Rituals() {
       <SectionTabs />
       
       <div className="p-4 pb-20">
-        <div className="mb-4">
-          <h1 className="text-xl font-bold text-gray-800">{t('rituals.title')}</h1>
-          <p className="text-sm text-gray-500">{t('rituals.subtitle')}</p>
-        </div>
-
         <h2 className="text-lg font-bold text-gray-800 mb-3">{t('rituals.protocols')}</h2>
 
         {loading ? (

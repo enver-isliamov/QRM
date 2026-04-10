@@ -39,11 +39,6 @@ function EthnoCalendar() {
   return (
     <div className="animate-fade-in min-h-screen bg-gray-50">
       <SectionTabs />
-      
-      <div className="p-4 pb-0">
-        <h1 className="text-xl font-bold text-gray-800">{t('calendar.title')}</h1>
-        <p className="text-sm text-gray-500">{t('calendar.subtitle')}</p>
-      </div>
 
       <div className="bg-white px-4 py-3 border-b border-gray-200 mt-4">
         <div className="flex items-center justify-between">

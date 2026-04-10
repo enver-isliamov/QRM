@@ -173,26 +173,22 @@ function VillageMeetings() {
       <SectionTabs />
       
       <div className="p-4">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h1 className="text-xl font-bold text-gray-800">{t('meetings.title')}</h1>
-            <p className="text-sm text-gray-500">{t('meetings.subtitle')}</p>
+        <div className="flex items-center gap-2">
+          <div className="relative flex-1">
+            <Search className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input
+              type="text"
+              placeholder={t('meetings.search_placeholder')}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            />
           </div>
           {user && (
-            <button onClick={() => setShowAdd(true)} className="flex items-center gap-1 bg-emerald-500 text-white px-3 py-2 rounded-lg text-sm font-medium">
+            <button onClick={() => setShowAdd(true)} className="flex items-center justify-center gap-1 bg-emerald-500 text-white px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap hover:bg-emerald-600 transition-colors">
               <Plus className="w-4 h-4" />{t('meetings.add')}
             </button>
           )}
-        </div>
-        <div className="relative">
-          <Search className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-          <input
-            type="text"
-            placeholder={t('meetings.search_placeholder')}
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500"
-          />
         </div>
       </div>
 

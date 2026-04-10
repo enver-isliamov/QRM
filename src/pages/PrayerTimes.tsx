@@ -37,11 +37,6 @@ function PrayerTimes() {
 
   return (
     <div className="animate-fade-in min-h-screen bg-gray-50">
-      <div className="bg-white px-4 py-4 border-b border-gray-200">
-        <h1 className="text-xl font-bold text-gray-800">{t('namaz.title')}</h1>
-        <p className="text-sm text-gray-500">{t('namaz.location')}</p>
-      </div>
-
       <div className="bg-white px-4 py-3 border-b border-gray-200">
         <div className="flex items-center justify-between">
           <button onClick={() => navigateDate('prev')} className="p-2 hover:bg-gray-100 rounded-lg touch-feedback">

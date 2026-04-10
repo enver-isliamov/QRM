@@ -435,27 +435,22 @@ function MicroYardym() {
       <SectionTabs />
       
       <div className="p-4">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h1 className="text-xl font-bold text-gray-800">{t('yardym.title')}</h1>
-            <p className="text-sm text-gray-500">{t('yardym.subtitle')}</p>
-          </div>
-          <button onClick={() => user ? setShowAddModal(true) : undefined}
-            className={`flex items-center gap-1 px-3 py-2 rounded-lg text-sm font-medium ${user ? 'bg-emerald-500 text-white' : 'bg-gray-100 text-gray-400'}`}>
-            <Plus className="w-4 h-4" />{t('yardym.add')}
-          </button>
-        </div>
-        
         <div className="flex flex-col gap-3">
-          <div className="relative">
-            <Search className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-            <input
-              type="text"
-              placeholder={t('yardym.search_placeholder')}
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500"
-            />
+          <div className="flex items-center gap-2">
+            <div className="relative flex-1">
+              <Search className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input
+                type="text"
+                placeholder={t('yardym.search_placeholder')}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              />
+            </div>
+            <button onClick={() => user ? setShowAddModal(true) : undefined}
+              className={`flex items-center justify-center gap-1 px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-colors ${user ? 'bg-emerald-500 text-white hover:bg-emerald-600' : 'bg-gray-200 text-gray-500'}`}>
+              <Plus className="w-4 h-4" />{t('yardym.add')}
+            </button>
           </div>
           <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
             <div className="flex items-center gap-1 bg-gray-50 border border-gray-200 rounded-lg px-2 py-1 flex-shrink-0">
