@@ -14,7 +14,7 @@ export default function SectionTabs() {
   ];
 
   return (
-    <div className="bg-white border-b border-gray-100 overflow-x-auto no-scrollbar sticky top-[57px] z-40">
+    <div className="bg-white border-b border-gray-100 overflow-x-auto no-scrollbar sticky top-0 z-40">
       <div className="flex px-4 min-w-max">
         {tabs.map((tab) => {
           const isActive = location.pathname === tab.path;
