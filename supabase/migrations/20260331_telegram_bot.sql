@@ -26,14 +26,21 @@ CREATE POLICY "Users can delete their own telegram link"
   USING (auth.uid() = user_id);
 
 -- Функция для генерации кода привязки
-CREATE OR REPLACE FUNCTION generate_telegram_auth_code(target_user_id UUID)
+CREATE OR REPLACE FUNCTION generate_telegram_auth_code()
 RETURNS TEXT
 LANGUAGE plpgsql
 SECURITY DEFINER
 AS $$
 DECLARE
   new_code TEXT;
+  target_user_id UUID;
 BEGIN
+  target_user_id := auth.uid();
+  
+  IF target_user_id IS NULL THEN
+    RAISE EXCEPTION 'Not authenticated';
+  END IF;
+
   -- Генерируем 6-значный код
   new_code := floor(random() * 900000 + 100000)::TEXT;
   

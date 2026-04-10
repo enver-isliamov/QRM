@@ -116,7 +116,37 @@ const resources = {
         "username_taken": "Этот username уже занят",
         "avatar_error": "Ошибка при загрузке аватара",
         "admin_panel": "Админ-панель",
-        "moderator_panel": "Панель модератора"
+        "moderator_panel": "Панель модератора",
+        "badges_list": {
+          "helper_1": {
+            "name": "Первый отклик",
+            "desc": "Откликнулся на просьбу о помощи"
+          },
+          "helper_5": {
+            "name": "Надежный помощник",
+            "desc": "Помог 5 раз"
+          },
+          "organizer": {
+            "name": "Организатор",
+            "desc": "Организовал встречу"
+          },
+          "active": {
+            "name": "Активный участник",
+            "desc": "Создал обращение"
+          }
+        }
+      },
+      "public_profile": {
+        "title": "Профиль участника",
+        "user_not_found": "Пользователь не найден",
+        "go_back": "Вернуться назад",
+        "trust_score": "Рейтинг доверия",
+        "send_message": "Написать сообщение",
+        "chat_in_dev": "Чаты находятся в разработке",
+        "admin_title": "Администратор",
+        "moderator_title": "Модератор",
+        "member_since": "В сообществе с",
+        "badges": "Достижения"
       },
       "namaz": {
         "title": "Расписание намазов",
@@ -258,17 +288,64 @@ const resources = {
         "reply_notification": "Новый ответ на ваш комментарий",
         "reply_body": "Вам ответили в обсуждении встречи \"{{village}}\""
       },
+      "auth": {
+        "back_home": "На главную",
+        "title": "Вход в ORAZA",
+        "subtitle": "Выберите способ авторизации",
+        "google_button": "Войти через Google",
+        "or_email": "или по email",
+        "email_label": "Email адрес",
+        "email_placeholder": "your@email.com",
+        "magic_link_button": "Получить ссылку для входа",
+        "sending": "Отправка...",
+        "magic_link_desc": "Мы вышлем магическую ссылку — пароль не нужен",
+        "email_sent_title": "Письмо отправлено!",
+        "email_sent_desc": "Мы отправили ссылку для входа на <strong>{{email}}</strong>. Проверьте почту (и папку «Спам»).",
+        "change_email": "Изменить адрес",
+        "terms_text": "Авторизуясь, вы принимаете",
+        "terms_link": "условия использования"
+      },
       "notifications": {
         "title": "Уведомления",
-        "no_notifications": "Уведомлений пока нет",
-        "no_notifications_desc": "Здесь будут появляться важные сообщения",
-        "mark_all_read": "Прочитать все",
-        "clear_all": "Очистить",
-        "types": {
+        "unread_count_one": "{{count}} непрочитанное",
+        "unread_count_few": "{{count}} непрочитанных",
+        "unread_count_many": "{{count}} непрочитанных",
+        "unread_count_other": "{{count}} непрочитанных",
+        "mark_all_read": "Отметить все как прочитанные",
+        "clear_read": "Очистить прочитанные",
+        "login_prompt": "Войдите, чтобы видеть уведомления",
+        "login_button": "Войти",
+        "stay_informed_title": "Будьте в курсе событий",
+        "stay_informed_desc": "Включите Push-уведомления, чтобы не пропустить отклики на ваши просьбы и новости встреч.",
+        "iphone_instruction": "<strong>Для iPhone:</strong> Нажмите «Поделиться» в браузере и выберите <strong>«На экран \"Домой\"»</strong>. Только после этого уведомления станут доступны.",
+        "enabling": "Настройка...",
+        "enable_button": "Включить уведомления",
+        "no_notifications_title": "Уведомлений пока нет",
+        "no_notifications_desc": "Подпишитесь на встречу или создайте обращение, чтобы получать новости.",
+        "more_messages_one": "+ еще {{count}} сообщение",
+        "more_messages_few": "+ еще {{count}} сообщения",
+        "more_messages_many": "+ еще {{count}} сообщений",
+        "more_messages_other": "+ еще {{count}} сообщений",
+        "more_details": "Подробнее",
+        "no_description": "Без описания",
+        "default_label": "Уведомление",
+        "type_labels": {
+          "meeting_update": "Встреча обновлена",
+          "meeting_date_set": "Назначено время",
+          "help_response": "Новый отклик",
+          "help_request_new": "Новое обращение",
           "system": "Система",
-          "help_response": "Отклик",
-          "meeting_update": "Встреча",
-          "report": "Жалоба"
+          "comment_reply": "Ответ",
+          "mention": "Упоминание"
+        },
+        "toast": {
+          "iphone_pwa_needed": "На iPhone уведомления работают только если добавить приложение на экран \"Домой\" (Поделиться -> На экран \"Домой\")",
+          "sw_not_supported": "Ваш браузер не поддерживает Service Workers",
+          "push_enabled": "Push-уведомления успешно включены!",
+          "push_denied": "Разрешение на уведомления не получено. Проверьте настройки браузера.",
+          "push_api_not_supported": "Ваш браузер или устройство не поддерживает Push API. Убедитесь, что вы используете последнюю версию iOS и приложение добавлено на экран \"Домой\".",
+          "error_prefix": "Ошибка: ",
+          "error_default": "Не удалось включить уведомления"
         }
       },
       "sections": {
@@ -279,8 +356,18 @@ const resources = {
         "rituals": "Обрядовый гид",
         "yardym": "Микро-Ярдым",
         "meetings": "Встречи сёл",
+        "meetings_sub": "События и сборы",
+        "yardym_sub": "Взаимопомощь",
+        "calendar_sub": "Праздники",
+        "rituals_sub": "Nikâh, Cenaze",
         "support": "Поддержать проект",
-        "login_button": "Войти в аккаунт"
+        "notifications": "Уведомления",
+        "login_button": "Войти в аккаунт",
+        "admin_panel": "Админ-панель",
+        "admin_desc": "Управление контентом и пользователями",
+        "admin_label": "Админ",
+        "member_label": "Участник",
+        "open_profile": "Открыть профиль →"
       },
       "support": {
         "title": "Поддержать проект",
@@ -329,6 +416,10 @@ const resources = {
         "success_title": "Готово!",
         "success_desc": "Ваше обращение успешно опубликовано",
         "success_button": "Отлично",
+        "reply_notification_title": "Новый ответ на ваш комментарий",
+        "reply_notification_body": "Вам ответили в обсуждении: \"{{title}}\"",
+        "reply": "Ответить",
+        "reply_to": "Ответ пользователю <0>{{name}}</0>",
         "modal_add_title": "Новое обращение",
         "modal_edit_title": "Редактировать",
         "label_type": "Тип помощи",
@@ -547,7 +638,37 @@ const resources = {
         "username_taken": "Bu username artıq alınğan",
         "avatar_error": "Avatar yüklegende hata oldı",
         "admin_panel": "Admin-panel",
-        "moderator_panel": "Moderator paneli"
+        "moderator_panel": "Moderator paneli",
+        "badges_list": {
+          "helper_1": {
+            "name": "İlk cevap",
+            "desc": "Yardım ricasına cevap berdi"
+          },
+          "helper_5": {
+            "name": "İtimatlı yardımcı",
+            "desc": "5 kere yardım etti"
+          },
+          "organizer": {
+            "name": "Teşkilâtçı",
+            "desc": "Körüşüv teşkil etti"
+          },
+          "active": {
+            "name": "Faal iştirakçı",
+            "desc": "Müracaat yarattı"
+          }
+        }
+      },
+      "public_profile": {
+        "title": "İştirakçı profili",
+        "user_not_found": "Qullanıcı tapılmadı",
+        "go_back": "Keri qaytmaq",
+        "trust_score": "İtimat reytingi",
+        "send_message": "Haber yazmaq",
+        "chat_in_dev": "Çatlar azırlanmaqta",
+        "admin_title": "İdareci",
+        "moderator_title": "Moderator",
+        "member_since": "Topluluqta şundan berli",
+        "badges": "Nailiyetler"
       },
       "namaz": {
         "title": "Namaz vaqıtları",
@@ -686,17 +807,60 @@ const resources = {
         "reply_notification": "Tefsiriñizge yañı cevap",
         "reply_body": "\"{{village}}\" körüşüviniñ muzakeresinde size cevap berdiler"
       },
+      "auth": {
+        "back_home": "Ana saifege",
+        "title": "ORAZA-ğa kiriş",
+        "subtitle": "Avtorizatsiya usulını saylañız",
+        "google_button": "Google vastasınen kirüv",
+        "or_email": "veya email vastasınen",
+        "email_label": "Email adresi",
+        "email_placeholder": "your@email.com",
+        "magic_link_button": "Kiriş bağlantısını almaq",
+        "sending": "Yollanılmaqta...",
+        "magic_link_desc": "Biz sihirli bağlantı yollarmız — parol kerekmez",
+        "email_sent_title": "Mektüp yollanıldı!",
+        "email_sent_desc": "Biz <strong>{{email}}</strong> adresine kiriş bağlantısını yolladıq. Poçtañıznı (ve «Spam» qutusını) teşkeriñiz.",
+        "change_email": "Adresni deñiştirmek",
+        "terms_text": "Avtorizatsiya yapıp, siz qabul etesiñiz",
+        "terms_link": "qullanuv şartlarını"
+      },
       "notifications": {
-        "title": "Bildirişler",
-        "no_notifications": "Şimdilik bildirişler yoq",
-        "no_notifications_desc": "Munda müim haberler peyda olacaq",
-        "mark_all_read": "Episini oqumaq",
-        "clear_all": "Temizlemek",
-        "types": {
-          "system": "Sistemi",
-          "help_response": "Otquv",
-          "meeting_update": "Körüşüv",
-          "report": "Şikâyet"
+        "title": "Bildirmeler",
+        "unread_count_one": "{{count}} oqulmağan",
+        "unread_count_other": "{{count}} oqulmağan",
+        "mark_all_read": "Episini oqulğan dep belgile",
+        "clear_read": "Oqulğanlarnı temizle",
+        "login_prompt": "Bildirmelerni körmek içün kiriş yapınız",
+        "login_button": "Kiriş",
+        "stay_informed_title": "Vaqialardan habardar oluñız",
+        "stay_informed_desc": "Push-bildirmelerni yoqatıñız, ricalarıñızğa cevaplarnı ve körüşüv haberlerini qaçırmamaq içün.",
+        "iphone_instruction": "<strong>iPhone içün:</strong> Brauzerde «Paylaş» basıñız ve <strong>«\"Ana ekranga\" qoşmaq»</strong> saylañız. Şundan soñ bildirmeler mümkün olacaq.",
+        "enabling": "Ayarlana...",
+        "enable_button": "Bildirmelerni yoqatmaq",
+        "no_notifications_title": "Şimdilik bildirmeler yoq",
+        "no_notifications_desc": "Haberler almaq içün körüşüvge yazılıñız veya müracaat yaratıñız.",
+        "more_messages_one": "+ daa {{count}} haber",
+        "more_messages_other": "+ daa {{count}} haber",
+        "more_details": "Tafsilâtlıca",
+        "no_description": "Tasvirsiz",
+        "default_label": "Bildirme",
+        "type_labels": {
+          "meeting_update": "Körüşüv yañartıldı",
+          "meeting_date_set": "Vaqıt belgilendi",
+          "help_response": "Yañı cevap",
+          "help_request_new": "Yañı müracaat",
+          "system": "Sistema",
+          "comment_reply": "Cevap",
+          "mention": "Añıluv"
+        },
+        "toast": {
+          "iphone_pwa_needed": "iPhone-da bildirmeler tek ilâve \"Ana ekranga\" qoşulğan olsa çalışa",
+          "sw_not_supported": "Brauzeriñiz Service Workers desteklemey",
+          "push_enabled": "Push-bildirmeler muvaffaqiyetli yoqatıldı!",
+          "push_denied": "Bildirmelerge ruhset alınmadı. Brauzer ayarlarını teşkeriñiz.",
+          "push_api_not_supported": "Brauzeriñiz veya cihazıñız Push API desteklemey. iOS-nıñ soñki versiyasını qullanğanıñızdan ve ilâveni \"Ana ekranga\" qoşqanıñızdan emin oluñız.",
+          "error_prefix": "Hata: ",
+          "error_default": "Bildirmelerni yoqatıp olamadıq"
         }
       },
       "sections": {
@@ -707,8 +871,18 @@ const resources = {
         "rituals": "Merasimler",
         "yardym": "Mikro-Yardım",
         "meetings": "Köy körüşüvleri",
+        "meetings_sub": "Vaqialar ve toplavlar",
+        "yardym_sub": "Yardımlaşuv",
+        "calendar_sub": "Bayramlar",
+        "rituals_sub": "Nikâh, Cenaze",
         "support": "Leyhanı desteklemek",
-        "login_button": "Hesapqa kirüv"
+        "notifications": "Bildirmeler",
+        "login_button": "Hesapqa kirüv",
+        "admin_panel": "Admin paneli",
+        "admin_desc": "Kontent ve qullanıcılarnı idare etüv",
+        "admin_label": "Admin",
+        "member_label": "İştirakçı",
+        "open_profile": "Profilni açmaq →"
       },
       "support": {
         "title": "Leyhanı desteklemek",
@@ -757,6 +931,10 @@ const resources = {
         "success_title": "Azır!",
         "success_desc": "Muracaatıñız muvaffaqiyetli derc etildi",
         "success_button": "Yahşı",
+        "reply_notification_title": "Tefsirinizge yañı cevap",
+        "reply_notification_body": "Muzakerede size cevap berdiler: \"{{title}}\"",
+        "reply": "Cevap bermek",
+        "reply_to": "<0>{{name}}</0> qullanıcısına cevap",
         "modal_add_title": "Yañı muracaat",
         "modal_edit_title": "Deñiştirmek",
         "label_type": "Yardım türü",

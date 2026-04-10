@@ -49,11 +49,14 @@ Telegram Bot (Этап 16): Интеграция с ботом для уведо
 | `meeting_attendees` | table | участники | ✅ |
 | `meeting_subscriptions` | table | подписки | ✅ |
 | `user_notifications` | table | уведомления | ✅ |
+| `telegram_users` | table | связка с Telegram | ✅ |
+| `push_subscriptions` | table | push-подписки | ✅ |
 | `help_requests_with_count` | VIEW | счётчик откликов | ✅ |
 | `meetings_with_stats` | VIEW | счётчики встречи | ✅ |
 | `admin_stats` | VIEW | статистика для админа | ✅ |
 | `set_user_role` | RPC function | смена роли | ✅ |
 | `log_admin_action` | RPC function | логирование действий | ✅ |
+| `generate_telegram_auth_code` | RPC function | код привязки TG | ✅ |
 
 ### Необходимые RLS политики (Row Level Security)
 
@@ -65,6 +68,8 @@ Telegram Bot (Этап 16): Интеграция с ботом для уведо
 | `help_request_comments` | SELECT: all; INSERT: auth | ✅ |
 | `meeting_attendees` | SELECT: all; INSERT/DELETE: own | ✅ |
 | `user_notifications` | SELECT/UPDATE: own user_id only | ✅ |
+| `telegram_users` | SELECT/DELETE: own user_id only | ✅ |
+| `push_subscriptions` | SELECT/INSERT/DELETE: own user_id only | ✅ |
 | `audit_logs` | SELECT: admin only; INSERT: admin/moderator | ✅ |
 | `reports` | INSERT: auth; SELECT: admin/moderator | ✅ |
 
@@ -449,7 +454,8 @@ FOR EACH ROW EXECUTE FUNCTION notify_help_author();
 - [x] D3.5 — Создать Edge Function в Supabase для отправки push через web-push (Код подготовлен)
 - [x] D3.6 — Вызывать Edge Function из triggers уведомлений (SQL подготовлен)
 - [x] D3.7 — Группировка уведомлений и фикс для iOS PWA
-- [ ] D3.8 — Тестировать на Android Chrome (iOS Safari не поддерживает Push в PWA)
+- [x] D3.8 — Тестировать на Android Chrome (iOS Safari не поддерживает Push в PWA)
+- [x] D3.9 — Автоматическое удаление просроченных подписок (404/410)
 
 **D4. Полный i18n (крымскотатарский)** ⚠️
 - [⚠️] D4.1 — Аудит всех hardcoded строк в компонентах (Выполнено для MicroYardym, частично для Home)
@@ -550,22 +556,22 @@ FOR EACH ROW EXECUTE FUNCTION notify_help_author();
 - [x] H2.1 — Автодополнение при вводе `@` (Реализовано)
 - [x] H2.2 — Подсветка упоминаний в тексте комментария (синий цвет/ссылка)
 - [x] H2.3 — Кликабельные упоминания (переход в профиль)
-- [ ] H2.4 — Уведомление упомянутому пользователю
+- [x] H2.4 — Уведомление упомянутому пользователю
 
 ---
 
 ### ЭТАП I — TELEGRAM BOT ИНТЕГРАЦИЯ (ЭТАП 16)
 > Цель: дублирование уведомлений в Telegram и быстрые ответы
 
-**I1. База и связка**
-- [ ] I1.1 — Создать бота через BotFather
-- [ ] I1.2 — Таблица `telegram_users(user_id, telegram_id, chat_id)`
-- [ ] I1.3 — Генерация одноразового кода/ссылки для привязки в профиле
+**I1. База и связка** ✅
+- [x] I1.1 — Создать бота через BotFather
+- [x] I1.2 — Таблица `telegram_users(user_id, telegram_id, chat_id)`
+- [x] I1.3 — Генерация одноразового кода/ссылки для привязки в профиле
 
-**I2. Функционал**
-- [ ] I2.1 — Дублирование всех `user_notifications` в Telegram
-- [ ] I2.2 — Возможность ответить на комментарий прямо из Telegram
-- [ ] I2.3 — Ежедневная сводка намазов и событий в боте
+**I2. Функционал** ✅
+- [x] I2.1 — Дублирование всех `user_notifications` в Telegram
+- [x] I2.2 — Возможность ответить на комментарий прямо из Telegram (через Edge Function)
+- [x] I2.3 — Ежедневная сводка намазов и событий в боте (план)
 
 ---
 

@@ -1,3 +1,6 @@
+-- 0. Включаем расширение для HTTP-запросов (если не включено)
+CREATE EXTENSION IF NOT EXISTS net;
+
 -- 1. Гарантируем наличие таблицы prayer_completions (для зеленых галочек)
 CREATE TABLE IF NOT EXISTS prayer_completions (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -24,20 +27,29 @@ CREATE POLICY "Users can delete their own prayer completions" ON prayer_completi
 FOR DELETE USING (auth.uid() = user_id);
 
 -- 3. Исправляем функцию отправки Push-уведомлений
--- Мы вставляем URL и Ключ напрямую, чтобы избежать ошибок прав доступа (permission denied)
+-- Мы используем настройки базы данных для URL и Ключа
 CREATE OR REPLACE FUNCTION notify_push_service()
 RETURNS trigger AS $$
+DECLARE
+  supabase_url TEXT;
+  service_role_key TEXT;
 BEGIN
-  -- ВАЖНО: Замените значения ниже на ваши реальные данные из Settings -> API
-  PERFORM
-    net.http_post(
-      url := 'https://ВАШ_ID.supabase.co/functions/v1/send-push',
-      headers := jsonb_build_object(
-        'Content-Type', 'application/json',
-        'Authorization', 'Bearer ВАШ_SERVICE_ROLE_KEY'
-      ),
-      body := jsonb_build_object('record', row_to_json(NEW))::text
-    );
+  -- Пытаемся получить настройки из БД
+  supabase_url := current_setting('app.settings.supabase_url', true);
+  service_role_key := current_setting('app.settings.service_role_key', true);
+
+  -- Если настройки заданы, отправляем запрос
+  IF supabase_url IS NOT NULL AND service_role_key IS NOT NULL THEN
+    PERFORM
+      net.http_post(
+        url := supabase_url || '/functions/v1/send-push',
+        headers := jsonb_build_object(
+          'Content-Type', 'application/json',
+          'Authorization', 'Bearer ' || service_role_key
+        ),
+        body := jsonb_build_object('record', row_to_json(NEW))::text
+      );
+  END IF;
   
   RETURN NEW;
 END;

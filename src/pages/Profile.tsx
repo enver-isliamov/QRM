@@ -1,29 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { User, Settings, Bell, Shield, LogOut, ChevronRight, Globe, Heart, Star, Activity, Award, Camera, CheckCheck, Loader2 } from 'lucide-react';
+import { User, Settings, Bell, Shield, LogOut, ChevronRight, Globe, Heart, Star, Activity, Camera, CheckCheck, Loader2 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../lib/supabase';
 import { useTranslation } from 'react-i18next';
 import { Skeleton } from '../components/ui/Skeleton';
 
-const ICON_MAP: Record<string, any> = {
-  Shield,
-  Heart,
-  Star,
-  Activity,
-  Award
-};
-
-const BADGE_COLORS: Record<string, string> = {
-  trusted: 'text-emerald-500 bg-emerald-50 border-emerald-200',
-  helper: 'text-rose-500 bg-rose-50 border-rose-200',
-  activist: 'text-amber-500 bg-amber-50 border-amber-200',
-  veteran: 'text-purple-500 bg-purple-50 border-purple-200',
-  helper_1: 'text-rose-500 bg-rose-50 border-rose-200',
-  helper_5: 'text-emerald-500 bg-emerald-50 border-emerald-200',
-  organizer: 'text-amber-500 bg-amber-50 border-amber-200',
-  active: 'text-blue-500 bg-blue-50 border-blue-200',
-};
+import { ICON_MAP, BADGE_COLORS } from '../lib/constants';
 
 function Profile() {
   const navigate = useNavigate();
@@ -51,7 +34,7 @@ function Profile() {
       .then(({ data }) => {
         if (data?.telegram_id) setTelegramLinked(true);
       });
-  }, [user]);
+  }, [user, t]);
 
   const handleUnlinkTelegram = async () => {
     if (!user) return;
@@ -247,7 +230,7 @@ function Profile() {
     };
 
     fetchStats();
-  }, [user, profile]);
+  }, [user, profile, t]);
 
   if (!user || !profile) {
     return (

@@ -59,7 +59,7 @@ BEGIN
       INSERT INTO user_notifications (user_id, type, title, body, link)
       VALUES (
         mentioned_user_id,
-        'system',
+        'mention',
         notification_title,
         substring(NEW.content from 1 for 100),
         target_link

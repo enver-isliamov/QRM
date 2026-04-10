@@ -1,102 +1,70 @@
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts"
+import webpush from "https://esm.sh/web-push@3.6.6"
 
-const TELEGRAM_BOT_TOKEN = Deno.env.get('TELEGRAM_BOT_TOKEN')
-const SUPABASE_URL = Deno.env.get('SUPABASE_URL')
-const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+const PUBLIC_KEY = Deno.env.get('PUSH_PUBLIC_KEY')
+const PRIVATE_KEY = Deno.env.get('PUSH_PRIVATE_KEY')
+
+webpush.setVapidDetails(
+  'mailto:support@oraza.ru',
+  PUBLIC_KEY,
+  PRIVATE_KEY
+)
 
 serve(async (req) => {
   try {
-    const body = await req.json()
+    const { record } = await req.json()
     
-    // 1. Обработка Webhook от Telegram (сообщения от пользователей)
-    if (body.message) {
-      const chatId = body.message.chat.id
-      const text = body.message.text || ''
-      const userId = body.message.from.id
+    // record - это строка из таблицы user_notifications
+    const { user_id, title, body, link } = record
 
-      // Команда /start 123456 (привязка аккаунта)
-      if (text.startsWith('/start ')) {
-        const authCode = text.split(' ')[1]
-        
-        // Ищем пользователя по коду в БД
-        const res = await fetch(`${SUPABASE_URL}/rest/v1/telegram_users?auth_code=eq.${authCode}&select=user_id,auth_code_expires_at`, {
-          headers: {
-            'apikey': SUPABASE_SERVICE_ROLE_KEY,
-            'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`
-          }
-        })
-        const data = await res.json()
-        const userLink = data[0]
-
-        if (userLink && new Date(userLink.auth_code_expires_at) > new Date()) {
-          // Привязываем аккаунт
-          await fetch(`${SUPABASE_URL}/rest/v1/telegram_users?user_id=eq.${userLink.user_id}`, {
-            method: 'PATCH',
-            headers: {
-              'apikey': SUPABASE_SERVICE_ROLE_KEY,
-              'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-              telegram_id: userId,
-              chat_id: chatId,
-              auth_code: null, // Сбрасываем код
-              auth_code_expires_at: null
-            })
-          })
-
-          await sendTelegramMessage(chatId, '✅ Аккаунт успешно привязан! Теперь вы будете получать уведомления здесь.')
-        } else {
-          await sendTelegramMessage(chatId, '❌ Неверный или просроченный код. Пожалуйста, сгенерируйте новый код в профиле приложения.')
-        }
-      } else {
-        const welcomeMsg = `👋 *Салям!* Я бот приложения *ORAZA*.\n\n` +
-          `Я буду присылать вам уведомления о:\n` +
-          `• 🔔 Новых откликах на ваши обращения в Ярдым\n` +
-          `• 📅 Изменениях во встречах сёл, на которые вы подписаны\n` +
-          `• 💬 Упоминаниях в комментариях\n\n` +
-          `Чтобы начать получать уведомления, сгенерируйте код в вашем профиле в приложении и отправьте его мне командой:\n` +
-          `\`/start ВАШ_КОД\``
-        await sendTelegramMessage(chatId, welcomeMsg, 'Markdown')
+    // 1. Получаем подписки пользователя из БД
+    // Примечание: Здесь нужен Service Role Key для обхода RLS
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+    
+    const fetchRes = await fetch(`${supabaseUrl}/rest/v1/push_subscriptions?user_id=eq.${user_id}&select=subscription`, {
+      headers: {
+        'apikey': supabaseKey,
+        'Authorization': `Bearer ${supabaseKey}`
       }
+    })
+    
+    const subscriptions = await fetchRes.json()
+
+    if (!subscriptions || subscriptions.length === 0) {
+      return new Response(JSON.stringify({ message: 'No subscriptions found' }), { status: 200 })
     }
 
-    // 2. Обработка уведомлений от триггера БД (отправка сообщения пользователю)
-    if (body.record) {
-      const { user_id, title, body: msgBody, link } = body.record
-
-      // Ищем chat_id пользователя
-      const res = await fetch(`${SUPABASE_URL}/rest/v1/telegram_users?user_id=eq.${user_id}&select=chat_id`, {
-        headers: {
-          'apikey': SUPABASE_SERVICE_ROLE_KEY,
-          'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`
+    // 2. Рассылаем уведомления
+    const payload = JSON.stringify({ title, body, url: link || '/' })
+    
+    const sendPromises = subscriptions.map((s: any) => 
+      webpush.sendNotification(s.subscription, payload).catch(async (err: any) => {
+        console.error('Error sending push:', err)
+        // Если подписка протухла (404 или 410), её стоит удалить
+        if (err.statusCode === 404 || err.statusCode === 410) {
+          console.log('Removing expired subscription:', s.subscription.endpoint)
+          await fetch(`${supabaseUrl}/rest/v1/push_subscriptions?subscription->>endpoint=eq.${s.subscription.endpoint}`, {
+            method: 'DELETE',
+            headers: {
+              'apikey': supabaseKey,
+              'Authorization': `Bearer ${supabaseKey}`
+            }
+          })
         }
       })
-      const data = await res.json()
-      const chat = data[0]
+    )
 
-      if (chat && chat.chat_id) {
-        const message = `🔔 *${title}*\n\n${msgBody}\n\n🔗 [Открыть в приложении](https://orazaru.vercel.app${link || '/'})`
-        await sendTelegramMessage(chat.chat_id, message, 'Markdown')
-      }
-    }
+    await Promise.all(sendPromises)
 
-    return new Response(JSON.stringify({ success: true }), { status: 200 })
+    return new Response(JSON.stringify({ success: true }), { 
+      headers: { "Content-Type": "application/json" },
+      status: 200 
+    })
   } catch (error) {
-    console.error('Error in telegram-bot function:', error)
-    return new Response(JSON.stringify({ error: error.message }), { status: 400 })
+    return new Response(JSON.stringify({ error: error.message }), { 
+      headers: { "Content-Type": "application/json" },
+      status: 400 
+    })
   }
 })
-
-async function sendTelegramMessage(chatId: number, text: string, parseMode?: string) {
-  const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`
-  await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      chat_id: chatId,
-      text: text,
-      parse_mode: parseMode
-    })
-  })
-}

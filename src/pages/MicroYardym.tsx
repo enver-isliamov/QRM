@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useTranslation } from 'react-i18next';
+import { useTranslation, Trans } from 'react-i18next';
 import { Heart, Phone, MapPin, AlertCircle, Plus, X, Droplets, Banknote, HelpCircle, MessageCircle, Send, Check, Flag, Search, Filter } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
@@ -217,8 +217,8 @@ function MicroYardym() {
           await supabase.from('user_notifications').insert({
             user_id: parentComment.author_id,
             type: 'system',
-            title: 'Новый ответ на ваш комментарий',
-            body: `Вам ответили в обсуждении: "${showCommentsModal.title}"`,
+            title: t('yardym.reply_notification_title'),
+            body: t('yardym.reply_notification_body', { title: showCommentsModal.title }),
             link: `/yardym/${showCommentsModal.id}`
           });
         }
@@ -698,7 +698,7 @@ function MicroYardym() {
                                 }}
                                 className={`text-[10px] font-medium hover:underline ${comment.author_id === user?.id ? 'text-emerald-100' : 'text-emerald-500'}`}
                               >
-                                Ответить
+                                {t('yardym.reply')}
                               </button>
                               {comment.author_id !== user?.id && (
                                 <button 
@@ -710,7 +710,7 @@ function MicroYardym() {
                             </div>
                           </div>
                           <p className="text-sm whitespace-pre-wrap break-words">
-                            {comment.content.split(/(@[a-zA-Z0-9_]+)/g).map((part, i) => 
+                            {comment.content.split(/(@[a-zA-Z0-9_]+)/g).map((part: string, i: number) => 
                               part.startsWith('@') ? (
                                 <button 
                                   key={i} 
@@ -780,7 +780,7 @@ function MicroYardym() {
                               )}
                             </div>
                             <p className="text-xs whitespace-pre-wrap break-words">
-                              {reply.content.split(/(@[a-zA-Z0-9_]+)/g).map((part, i) => 
+                              {reply.content.split(/(@[a-zA-Z0-9_]+)/g).map((part: string, i: number) => 
                                 part.startsWith('@') ? (
                                   <button 
                                     key={i} 
@@ -840,7 +840,11 @@ function MicroYardym() {
                   {replyTo && (
                     <div className="flex items-center justify-between bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-100">
                       <p className="text-xs text-gray-500">
-                        Ответ пользователю <span className="font-bold text-emerald-600">{comments.find(c => c.id === replyTo)?.author?.name}</span>
+                        <Trans 
+                          i18nKey="yardym.reply_to" 
+                          values={{ name: comments.find(c => c.id === replyTo)?.author?.name }}
+                          components={[<span className="font-bold text-emerald-600" />]}
+                        />
                       </p>
                       <button onClick={() => { setReplyTo(null); setNewComment(''); }} className="text-gray-400 hover:text-rose-500">
                         <X className="w-3.5 h-3.5" />

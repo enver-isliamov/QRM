@@ -274,10 +274,10 @@ export default function Home() {
         <p className="font-bold text-gray-900 text-lg mb-4 px-1">{t('nav.sections')}</p>
         <div className="grid grid-cols-2 gap-4">
           {[
-            { path: '/village-meetings', emoji: '🏘️', title: t('home.village_meetings'),   sub: i18n.language === 'crh' ? 'Vaqialar ve toplavlar' : 'События и сборы', show: featureToggles.meetings, color: 'bg-blue-50' },
-            { path: '/micro-yardym',     emoji: '🤝', title: 'Mikro-Yardım',   sub: t('nav.yardym'), show: featureToggles.yardym, color: 'bg-emerald-50' },
-            { path: '/ethno-calendar',   emoji: '📅', title: i18n.language === 'crh' ? 'Taqvim' : 'Этно-календарь', sub: i18n.language === 'crh' ? 'Bayramlar' : 'Праздники', show: featureToggles.calendar, color: 'bg-amber-50' },
-            { path: '/rituals',          emoji: '📖', title: i18n.language === 'crh' ? 'Adetler' : 'Обряды',         sub: 'Nikâh, Cenaze', show: featureToggles.rituals, color: 'bg-purple-50' },
+            { path: '/village-meetings', emoji: '🏘️', title: t('sections.meetings'),   sub: t('sections.meetings_sub'), show: featureToggles.meetings, color: 'bg-blue-50' },
+            { path: '/micro-yardym',     emoji: '🤝', title: t('sections.yardym'),     sub: t('sections.yardym_sub'), show: featureToggles.yardym, color: 'bg-emerald-50' },
+            { path: '/ethno-calendar',   emoji: '📅', title: t('sections.ethno_calendar'), sub: t('sections.calendar_sub'), show: featureToggles.calendar, color: 'bg-amber-50' },
+            { path: '/rituals',          emoji: '📖', title: t('sections.rituals'),    sub: t('sections.rituals_sub'), show: featureToggles.rituals, color: 'bg-purple-50' },
           ].filter(item => item.show).map(({ path, emoji, title, sub, color }) => (
             <button key={path} onClick={() => navigate(path)}
               className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 text-left touch-feedback hover:border-emerald-200 transition-all hover:shadow-md group">
