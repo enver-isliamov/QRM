@@ -10,6 +10,11 @@ import { HelpRequestRow, HelpRequestCommentRow, supabase } from '../lib/supabase
 import { useStore } from '../store/useStore';
 import { Skeleton } from '../components/ui/Skeleton';
 import SectionTabs from '../components/SectionTabs';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '../components/ui/dialog';
+import { Input } from '../components/ui/input';
+import { Textarea } from '../components/ui/textarea';
+import { Label } from '../components/ui/label';
+import { Button } from '../components/ui/button';
 
 type NewReq = { type: 'blood' | 'money' | 'other'; urgency: 'urgent' | 'normal'; title: string; location: string; description: string; contact_phone: string; cloudtips_url?: string };
 
@@ -519,119 +524,123 @@ function MicroYardym() {
       </div>
 
       {/* Success Modal */}
-      {showSuccessModal && (
-        <div className="fixed inset-0 z-[110] flex items-center justify-center modal-overlay" onClick={() => setShowSuccessModal(false)}>
-          <div className="bg-white w-[280px] rounded-2xl p-8 animate-fade-in text-center shadow-2xl" onClick={e => e.stopPropagation()}>
-            <div className="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-6 animate-bounce">
-              <Check className="w-10 h-10 text-emerald-600" />
-            </div>
-            <h2 className="text-xl font-bold text-gray-800 mb-2">{t('yardym.success_title')}</h2>
-            <p className="text-gray-500 text-sm mb-6">{t('yardym.success_desc')}</p>
-            <button 
-              onClick={() => setShowSuccessModal(false)}
-              className="w-full bg-emerald-500 text-white font-semibold py-3 rounded-xl hover:bg-emerald-600 transition-colors"
-            >
-              {t('yardym.success_button')}
-            </button>
+      <Dialog open={showSuccessModal} onOpenChange={setShowSuccessModal}>
+        <DialogContent className="sm:max-w-sm text-center">
+          <div className="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-2 animate-bounce">
+            <Check className="w-10 h-10 text-emerald-600" />
           </div>
-        </div>
-      )}
+          <DialogHeader>
+            <DialogTitle className="text-center text-xl">{t('yardym.success_title')}</DialogTitle>
+            <DialogDescription className="text-center">
+              {t('yardym.success_desc')}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="sm:justify-center">
+            <Button onClick={() => setShowSuccessModal(false)} className="w-full">
+              {t('yardym.success_button')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Add Modal */}
-      {showAddModal && (
-        <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center modal-overlay" onClick={() => setShowAddModal(false)}>
-          <div className="bg-white w-full max-w-md rounded-t-2xl sm:rounded-2xl p-6 animate-slide-up max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-bold text-gray-800">{editingId ? t('yardym.modal_edit_title') : t('yardym.modal_add_title')}</h2>
-              <button onClick={() => { setShowAddModal(false); setEditingId(null); setNewReq({ type: 'other', urgency: 'normal', title: '', location: '', description: '', contact_phone: '', cloudtips_url: '' }); }}><X className="w-6 h-6 text-gray-400" /></button>
+      <Dialog open={showAddModal} onOpenChange={(open) => {
+        if (!open) {
+          setShowAddModal(false);
+          setEditingId(null);
+          setNewReq({ type: 'other', urgency: 'normal', title: '', location: '', description: '', contact_phone: '', cloudtips_url: '' });
+        }
+      }}>
+        <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{editingId ? t('yardym.modal_edit_title') : t('yardym.modal_add_title')}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div>
+              <Label className="mb-2 block">{t('yardym.label_type')}</Label>
+              <div className="flex gap-2">
+                {([['blood',t('yardym.filter_blood'),Droplets],['money',t('yardym.filter_money'),Banknote],['other',t('yardym.filter_other'),HelpCircle]] as const).map(([v,l,Icon]) => (
+                  <Button key={v} variant={newReq.type === v ? "default" : "outline"} onClick={() => setNewReq(r => ({ ...r, type: v }))} className="flex-1 gap-1">
+                    <Icon className="w-4 h-4" />{l}
+                  </Button>
+                ))}
+              </div>
             </div>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">{t('yardym.label_type')}</label>
-                <div className="flex gap-2">
-                  {([['blood',t('yardym.filter_blood'),Droplets],['money',t('yardym.filter_money'),Banknote],['other',t('yardym.filter_other'),HelpCircle]] as const).map(([v,l,Icon]) => (
-                    <button key={v} onClick={() => setNewReq(r => ({ ...r, type: v }))}
-                      className={`flex-1 flex items-center justify-center gap-1 py-2 rounded-lg border text-sm ${newReq.type === v ? 'border-emerald-500 bg-emerald-50 text-emerald-700' : 'border-gray-200 text-gray-600'}`}>
-                      <Icon className="w-4 h-4" />{l}
-                    </button>
-                  ))}
-                </div>
+            <div>
+              <Label className="mb-2 block">{t('yardym.label_urgency')}</Label>
+              <div className="flex gap-2">
+                {([['urgent',t('yardym.urgent_label')],['normal',t('yardym.normal_label')]] as const).map(([v,l]) => (
+                  <Button key={v} variant={newReq.urgency === v ? "default" : "outline"} onClick={() => setNewReq(r => ({ ...r, urgency: v }))} className="flex-1">
+                    {l}
+                  </Button>
+                ))}
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">{t('yardym.label_urgency')}</label>
-                <div className="flex gap-2">
-                  {([['urgent',t('yardym.urgent_label')],['normal',t('yardym.normal_label')]] as const).map(([v,l]) => (
-                    <button key={v} onClick={() => setNewReq(r => ({ ...r, urgency: v }))}
-                      className={`flex-1 py-2 rounded-lg border text-sm ${newReq.urgency === v ? 'border-emerald-500 bg-emerald-50 text-emerald-700' : 'border-gray-200 text-gray-600'}`}>{l}</button>
-                  ))}
-                </div>
+            </div>
+            {([['title',t('yardym.label_title'),t('yardym.placeholder_title'),'text'],['location',t('yardym.label_location'),t('yardym.placeholder_location'),'text'],['contact_phone',t('yardym.label_phone'),t('yardym.placeholder_phone'),'tel'],['cloudtips_url',t('yardym.label_cloudtips'),t('yardym.placeholder_cloudtips'),'url']] as const).map(([f,l,ph,t_input]) => (
+              <div key={f} className="space-y-1">
+                <Label>{l}</Label>
+                <Input type={t_input} value={(newReq as any)[f]} placeholder={ph}
+                  onChange={e => {
+                    let val = e.target.value;
+                    if (f === 'contact_phone') {
+                      const x = val.replace(/\D/g, '').match(/(\d{0,1})(\d{0,3})(\d{0,3})(\d{0,2})(\d{0,2})/);
+                      if (!x) return;
+                      if (!x[2]) val = x[1] ? `+${x[1]}` : '';
+                      else val = `+${x[1] || '7'} (${x[2]}${x[3] ? `) ${x[3]}` : ''}${x[4] ? `-${x[4]}` : ''}${x[5] ? `-${x[5]}` : ''}`;
+                      if (val.length > 18) val = val.substring(0, 18);
+                    }
+                    setNewReq(r => ({ ...r, [f]: val }));
+                  }}
+                />
               </div>
-              {([['title',t('yardym.label_title'),t('yardym.placeholder_title'),'text'],['location',t('yardym.label_location'),t('yardym.placeholder_location'),'text'],['contact_phone',t('yardym.label_phone'),t('yardym.placeholder_phone'),'tel'],['cloudtips_url',t('yardym.label_cloudtips'),t('yardym.placeholder_cloudtips'),'url']] as const).map(([f,l,ph,t_input]) => (
-                <div key={f}>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">{l}</label>
-                  <input type={t_input} value={(newReq as any)[f]} placeholder={ph}
-                    onChange={e => {
-                      let val = e.target.value;
-                      if (f === 'contact_phone') {
-                        // Simple phone mask logic
-                        const x = val.replace(/\D/g, '').match(/(\d{0,1})(\d{0,3})(\d{0,3})(\d{0,2})(\d{0,2})/);
-                        if (!x) return;
-                        if (!x[2]) val = x[1] ? `+${x[1]}` : '';
-                        else val = `+${x[1] || '7'} (${x[2]}${x[3] ? `) ${x[3]}` : ''}${x[4] ? `-${x[4]}` : ''}${x[5] ? `-${x[5]}` : ''}`;
-                        if (val.length > 18) val = val.substring(0, 18);
-                      }
-                      setNewReq(r => ({ ...r, [f]: val }));
-                    }}
-                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent" />
-                </div>
-              ))}
-              <div>
-                <div className="flex justify-between items-center mb-1">
-                  <label className="block text-sm font-medium text-gray-700">{t('yardym.label_description')}</label>
-                  <span className={`text-xs ${newReq.description.length > 500 ? 'text-rose-500' : 'text-gray-400'}`}>
-                    {newReq.description.length}/500
-                  </span>
-                </div>
-                <textarea value={newReq.description} rows={3} maxLength={500}
-                  onChange={e => setNewReq(r => ({ ...r, description: e.target.value }))}
-                  className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent resize-none" />
+            ))}
+            <div className="space-y-1">
+              <div className="flex justify-between items-center">
+                <Label>{t('yardym.label_description')}</Label>
+                <span className={`text-xs ${newReq.description.length > 500 ? 'text-destructive' : 'text-muted-foreground'}`}>
+                  {newReq.description.length}/500
+                </span>
               </div>
-              <button onClick={handleAdd} disabled={!newReq.title || !newReq.location || !newReq.description || submitting}
-                className="w-full bg-emerald-500 text-white font-semibold py-3 rounded-xl hover:bg-emerald-600 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed">
-                {submitting ? t('yardym.publishing') : t('yardym.publish')}
-              </button>
+              <Textarea value={newReq.description} rows={3} maxLength={500}
+                onChange={e => setNewReq(r => ({ ...r, description: e.target.value }))}
+                className="resize-none" />
             </div>
           </div>
-        </div>
-      )}
+          <DialogFooter>
+            <Button onClick={handleAdd} disabled={!newReq.title || !newReq.location || !newReq.description || submitting} className="w-full">
+              {submitting ? t('yardym.publishing') : t('yardym.publish')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Respond Modal */}
-      {showResponseModal && (
-        <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center modal-overlay" onClick={() => setShowResponseModal(null)}>
-          <div className="bg-white w-full max-w-md rounded-t-2xl sm:rounded-2xl p-6 animate-slide-up" onClick={e => e.stopPropagation()}>
-            <h2 className="text-xl font-bold text-gray-800 mb-4">{t('yardym.respond_confirm_title')}</h2>
-            <p className="text-gray-600 mb-6">{t('yardym.respond_confirm_desc')}</p>
-            <div className="flex gap-3">
-              <button onClick={() => setShowResponseModal(null)} className="flex-1 py-3 border border-gray-200 rounded-xl text-gray-600">{t('common.cancel')}</button>
-              <button onClick={() => handleRespond(showResponseModal)} className="flex-1 bg-emerald-500 text-white py-3 rounded-xl font-medium hover:bg-emerald-600">{t('common.confirm')}</button>
-            </div>
-          </div>
-        </div>
-      )}
+      <Dialog open={!!showResponseModal} onOpenChange={(open) => !open && setShowResponseModal(null)}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>{t('yardym.respond_confirm_title')}</DialogTitle>
+            <DialogDescription>{t('yardym.respond_confirm_desc')}</DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex-row gap-2 sm:justify-end">
+            <Button variant="outline" onClick={() => setShowResponseModal(null)} className="flex-1 sm:flex-none">{t('common.cancel')}</Button>
+            <Button onClick={() => showResponseModal && handleRespond(showResponseModal)} className="flex-1 sm:flex-none">{t('common.confirm')}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Close Modal */}
-      {showCloseModal && (
-        <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center modal-overlay" onClick={() => setShowCloseModal(null)}>
-          <div className="bg-white w-full max-w-md rounded-t-2xl sm:rounded-2xl p-6 animate-slide-up" onClick={e => e.stopPropagation()}>
-            <h2 className="text-xl font-bold text-gray-800 mb-4">{t('yardym.close_confirm_title')}</h2>
-            <p className="text-gray-600 mb-6">{t('yardym.close_confirm_desc')}</p>
-            <div className="flex gap-3">
-              <button onClick={() => setShowCloseModal(null)} className="flex-1 py-3 border border-gray-200 rounded-xl text-gray-600">{t('common.cancel')}</button>
-              <button onClick={() => handleClose(showCloseModal)} className="flex-1 bg-emerald-500 text-white py-3 rounded-xl font-medium hover:bg-emerald-600">{t('yardym.close')}</button>
-            </div>
-          </div>
-        </div>
-      )}
+      <Dialog open={!!showCloseModal} onOpenChange={(open) => !open && setShowCloseModal(null)}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>{t('yardym.close_confirm_title')}</DialogTitle>
+            <DialogDescription>{t('yardym.close_confirm_desc')}</DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex-row gap-2 sm:justify-end">
+            <Button variant="outline" onClick={() => setShowCloseModal(null)} className="flex-1 sm:flex-none">{t('common.cancel')}</Button>
+            <Button onClick={() => showCloseModal && handleClose(showCloseModal)} className="flex-1 sm:flex-none">{t('yardym.close')}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Comments Modal */}
       {showCommentsModal && (

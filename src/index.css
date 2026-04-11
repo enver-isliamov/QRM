@@ -1,3 +1,6 @@
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@import "@fontsource-variable/geist";
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -43,3 +46,57 @@ body {
 
 .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 .hide-scrollbar::-webkit-scrollbar { display: none; }
+
+@layer base {
+  :root {
+    --background: 60 20% 98%; /* #fdfdfc warm off-white */
+    --foreground: 20 14% 4%;
+    --card: 0 0% 100%;
+    --card-foreground: 20 14% 4%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 20 14% 4%;
+    --primary: 158 75% 30%; /* Deep emerald */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 60 10% 90%;
+    --secondary-foreground: 24 10% 10%;
+    --muted: 60 10% 90%;
+    --muted-foreground: 25 5% 45%;
+    --accent: 60 10% 90%;
+    --accent-foreground: 24 10% 10%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 20 6% 90%;
+    --input: 20 6% 90%;
+    --ring: 158 75% 30%;
+    --radius: 1rem; /* 16px for softer look */
+  }
+
+  .dark {
+    --background: 20 14% 4%;
+    --foreground: 60 20% 98%;
+    --card: 24 10% 10%;
+    --card-foreground: 60 20% 98%;
+    --popover: 24 10% 10%;
+    --popover-foreground: 60 20% 98%;
+    --primary: 158 75% 40%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 24 10% 15%;
+    --secondary-foreground: 60 20% 98%;
+    --muted: 24 10% 15%;
+    --muted-foreground: 60 10% 60%;
+    --accent: 24 10% 15%;
+    --accent-foreground: 60 20% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 60 20% 98%;
+    --border: 24 10% 15%;
+    --input: 24 10% 15%;
+    --ring: 158 75% 40%;
+  }
+
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { MapPin, Calendar, Plus, X, Bell, Users, ChevronRight, Search, Heart } from 'lucide-react';
+import { MapPin, Calendar, Plus, Bell, Users, ChevronRight, Search, Heart } from 'lucide-react';
 import { format } from 'date-fns';
 import { ru, tr } from 'date-fns/locale';
 import { useNavigate } from 'react-router-dom';
@@ -9,6 +9,11 @@ import { useAuth } from '../hooks/useAuth';
 import { MeetingRow } from '../lib/supabase';
 import { Skeleton } from '../components/ui/Skeleton';
 import SectionTabs from '../components/SectionTabs';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../components/ui/dialog';
+import { Input } from '../components/ui/input';
+import { Textarea } from '../components/ui/textarea';
+import { Label } from '../components/ui/label';
+import { Button } from '../components/ui/button';
 
 function VillageMeetings() {
   const { t, i18n } = useTranslation();
@@ -220,55 +225,58 @@ function VillageMeetings() {
       </div>
 
       {/* Add Modal */}
-      {showAdd && (
-        <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center modal-overlay" onClick={() => { setShowAdd(false); setEditingId(null); }}>
-          <div className="bg-white w-full max-w-md rounded-t-2xl sm:rounded-2xl p-6 animate-slide-up max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-bold text-gray-800">{editingId ? t('meetings.edit_title') : t('meetings.new_title')}</h2>
-              <button onClick={() => { setShowAdd(false); setEditingId(null); }}><X className="w-6 h-6 text-gray-400" /></button>
-            </div>
-            <div className="space-y-4">
-              {[
-                ['village', t('meetings.village_label'), t('meetings.village_placeholder'), 'text'],
-                ['organizer', t('meetings.organizer_label'), t('meetings.organizer_default'), 'text'],
-                ['organizer_phone', t('meetings.phone_label'), '+7 (978) 000-00-00', 'tel'],
-                ['location', t('meetings.location_label'), t('meetings.location_placeholder'), 'text'],
-                ['meeting_date', t('meetings.date_label'), '', 'date'],
-                ['fund_purpose', t('meetings.fund_purpose_label'), t('meetings.fund_purpose_placeholder'), 'text'],
-                ['fund_goal', t('meetings.fund_goal_label'), '500000', 'number'],
-                ['fund_cloudtips_url', t('meetings.fund_cloudtips_label'), 'https://pay.cloudtips.ru/...', 'url'],
-              ].map(([f, l, ph, t_field]) => (
-                <div key={f}>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">{l}</label>
-                  <input type={t_field as string} value={(form as any)[f]} placeholder={ph as string}
-                    onChange={e => {
-                      let val = e.target.value;
-                      if (f === 'organizer_phone') {
-                        const x = val.replace(/\D/g, '').match(/(\d{0,1})(\d{0,3})(\d{0,3})(\d{0,2})(\d{0,2})/);
-                        if (!x) return;
-                        if (!x[2]) val = x[1] ? `+${x[1]}` : '';
-                        else val = `+${x[1] || '7'} (${x[2]}${x[3] ? `) ${x[3]}` : ''}${x[4] ? `-${x[4]}` : ''}${x[5] ? `-${x[5]}` : ''}`;
-                        if (val.length > 18) val = val.substring(0, 18);
-                      }
-                      setForm((prev: any) => ({ ...prev, [f]: val }));
-                    }}
-                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent" />
-                </div>
-              ))}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">{t('meetings.description_label')}</label>
-                <textarea value={form.description} rows={3}
-                  onChange={e => setForm((prev: any) => ({ ...prev, description: e.target.value }))}
-                  className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent resize-none" />
+      <Dialog open={showAdd} onOpenChange={(open) => {
+        if (!open) {
+          setShowAdd(false);
+          setEditingId(null);
+        }
+      }}>
+        <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{editingId ? t('meetings.edit_title') : t('meetings.new_title')}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            {[
+              ['village', t('meetings.village_label'), t('meetings.village_placeholder'), 'text'],
+              ['organizer', t('meetings.organizer_label'), t('meetings.organizer_default'), 'text'],
+              ['organizer_phone', t('meetings.phone_label'), '+7 (978) 000-00-00', 'tel'],
+              ['location', t('meetings.location_label'), t('meetings.location_placeholder'), 'text'],
+              ['meeting_date', t('meetings.date_label'), '', 'date'],
+              ['fund_purpose', t('meetings.fund_purpose_label'), t('meetings.fund_purpose_placeholder'), 'text'],
+              ['fund_goal', t('meetings.fund_goal_label'), '500000', 'number'],
+              ['fund_cloudtips_url', t('meetings.fund_cloudtips_label'), 'https://pay.cloudtips.ru/...', 'url'],
+            ].map(([f, l, ph, t_field]) => (
+              <div key={f} className="space-y-1">
+                <Label>{l}</Label>
+                <Input type={t_field as string} value={(form as any)[f]} placeholder={ph as string}
+                  onChange={e => {
+                    let val = e.target.value;
+                    if (f === 'organizer_phone') {
+                      const x = val.replace(/\D/g, '').match(/(\d{0,1})(\d{0,3})(\d{0,3})(\d{0,2})(\d{0,2})/);
+                      if (!x) return;
+                      if (!x[2]) val = x[1] ? `+${x[1]}` : '';
+                      else val = `+${x[1] || '7'} (${x[2]}${x[3] ? `) ${x[3]}` : ''}${x[4] ? `-${x[4]}` : ''}${x[5] ? `-${x[5]}` : ''}`;
+                      if (val.length > 18) val = val.substring(0, 18);
+                    }
+                    setForm((prev: any) => ({ ...prev, [f]: val }));
+                  }}
+                />
               </div>
-              <button onClick={handleAdd} disabled={!form.village || !form.meeting_date || submitting}
-                className="w-full bg-emerald-500 text-white font-semibold py-3 rounded-xl hover:bg-emerald-600 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed">
-                {submitting ? t('meetings.saving') : (editingId ? t('meetings.save_changes') : t('meetings.create_meeting'))}
-              </button>
+            ))}
+            <div className="space-y-1">
+              <Label>{t('meetings.description_label')}</Label>
+              <Textarea value={form.description} rows={3}
+                onChange={e => setForm((prev: any) => ({ ...prev, description: e.target.value }))}
+                className="resize-none" />
             </div>
           </div>
-        </div>
-      )}
+          <DialogFooter>
+            <Button onClick={handleAdd} disabled={!form.village || !form.meeting_date || submitting} className="w-full">
+              {submitting ? t('meetings.saving') : (editingId ? t('meetings.save_changes') : t('meetings.create_meeting'))}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
