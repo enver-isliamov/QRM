@@ -1,17 +1,8 @@
 # ORAZA — Todo.MD · Полный аудит и план разработки
 > Репозиторий: `github.com/enver-isliamov/QRM` · Деплой: Vercel auto → `orazaru.vercel.app`
-> База: Supabase `cksqnhldbrvbmdwtjefq` · Обновлено: 27 марта 2026
+> База: Supabase `cksqnhldbrvbmdwtjefq` · Обновлено: 11 апреля 2026 (аудит)
 
 ---
-Архитектура и План (Todo.MD):
-Добавлены этапы 11-14, которые критически важны для "живого" приложения:
-Система уведомлений (Этап 11): Группировка, очистка прочитанных и PWA-фикс для iOS. ✅
-Поиск и Фильтры (Этап 12): Поиск по селам и типам помощи, фильтрация по регионам. ✅
-CMS для Админа (Этап 13): Управление этно-календарем и ритуалами через интерфейс. ✅
-Сообщество (Этап 14): Публичные профили (без личных данных). ✅
-Система обсуждений (Этап 15): Ответы на комментарии и упоминания @username (в разработке). ❌
-Telegram Bot (Этап 16): Интеграция с ботом для уведомлений и быстрых действий (план). ❌
-
 
 ## ЛЕГЕНДА СТАТУСОВ
 
@@ -24,6 +15,39 @@ Telegram Bot (Этап 16): Интеграция с ботом для уведо
 | 🟡 | Средний приоритет |
 | 🟢 | Низкий приоритет / косметика |
 | 📋 | Требует SQL-миграции в Supabase |
+
+---
+
+## РЕЗУЛЬТАТЫ АУДИТА (апрель 2026)
+
+### Что реализовано с момента последнего обновления
+
+| Функция | Файл | Статус |
+|---------|------|--------|
+| Группировка уведомлений | `src/pages/Notifications.tsx` → `groupedNotifications` useMemo | ✅ |
+| Очистка прочитанных уведомлений | `src/hooks/useNotifications.ts` → `clearRead()` | ✅ |
+| Кнопка Trash2 в хедере уведомлений | `src/pages/Notifications.tsx` | ✅ |
+| Древовидные комментарии (replies) | `MeetingDetail.tsx`, `MicroYardym.tsx` | ✅ |
+| Цитирование оригинала в ответах | Оба файла комментариев | ✅ |
+| @mentions с автодополнением | `MeetingDetail.tsx`, `MicroYardym.tsx` | ✅ |
+| Жалобы (reports) на комментарии | Оба файла | ✅ |
+| shadcn/ui Dialog в VillageMeetings | `src/pages/VillageMeetings.tsx` | ✅ |
+| shadcn/ui Dialog в MicroYardym | `src/pages/MicroYardym.tsx` | ✅ |
+| shadcn/ui Button, Input, Label, Textarea | `src/components/ui/` | ✅ |
+| SectionTabs (единая навигация разделов) | `src/components/SectionTabs.tsx` | ✅ |
+| Motion/Framer анимации в навигации | `BottomNavigation.tsx`, `SectionTabs.tsx` | ✅ |
+| Header с shadcn Button | `src/components/Header.tsx` | ✅ |
+| Яндекс карта в MeetingDetail | `src/pages/MeetingDetail.tsx` | ✅ |
+| Google Calendar ссылка | `src/pages/MeetingDetail.tsx` | ✅ |
+| Счётчик дней до встречи | `src/pages/MeetingDetail.tsx` | ✅ |
+| Фильтрация Ярдым по типу и срочности | `src/pages/MicroYardym.tsx` | ✅ |
+| Поиск по встречам и Ярдым | `VillageMeetings.tsx`, `MicroYardym.tsx` | ✅ |
+| Публичные профили `/user/:id` | `src/pages/PublicProfile.tsx` | ✅ |
+| Telegram bot Edge Function | `supabase/functions/telegram-bot/index.ts` | ✅ |
+| Telegram привязка в профиле | `src/pages/Profile.tsx` | ✅ |
+| Push-подписки (VAPID) | `src/pages/Notifications.tsx` | ⚠️ |
+| CloudTips кнопка в карточке встречи | `src/pages/VillageMeetings.tsx` | ✅ |
+| Fund edit modal в MeetingDetail | `src/pages/MeetingDetail.tsx` | ✅ |
 
 ---
 
@@ -148,13 +172,16 @@ Telegram Bot (Этап 16): Интеграция с ботом для уведо
 | 6.4 | Откликнуться (auth) | INSERT `help_responses` | Работает | ✅ |
 | 6.5 | Нельзя откликнуться дважды | Уникальный индекс в БД | Кнопка disabled из alreadyResponded | ✅ |
 | 6.6 | Автор закрывает своё обращение | `status = 'completed'` | Работает | ✅ |
-| 6.7 | Создать обращение | Модалка с формой | Работает | ✅ |
+| 6.7 | Создать обращение | Модалка с формой (shadcn Dialog) | Работает | ✅ |
 | 6.8 | Премодерация (Feature Toggle) | `status = 'pending'` при включении | Работает через featureToggles | ✅ |
-| 6.9 | Комментарии к обращению | Чат-интерфейс | Работает | ✅ |
+| 6.9 | Комментарии к обращению | Чат-интерфейс с replies | Работает | ✅ |
 | 6.10 | FK `profiles!help_request_comments_author_id_fkey` | Именованный FK в Supabase | Реализовано в БД | ✅ |
 | 6.11 | Жалоба на обращение / комментарий | INSERT `reports` | Работает | ✅ |
 | 6.12 | Уведомление автору при отклике | Trigger в БД | Работает (клиентская часть) | ✅ |
 | 6.13 | Модалка «Добавить»: валидация полей | Кнопка disabled без обязательных | Работает | ✅ |
+| 6.14 | Поиск по обращениям | Фильтр по тексту | Работает | ✅ |
+| 6.15 | Фильтр по типу (кровь/деньги/другое) | Dropdown select | Работает | ✅ |
+| 6.16 | Фильтр по срочности | Dropdown select | Работает | ✅ |
 
 ### Сценарий 7: Встречи сёл — участник
 
@@ -166,22 +193,28 @@ Telegram Bot (Этап 16): Интеграция с ботом для уведо
 | 7.4 | Список участников (аватары) | Join `meeting_attendees` + `profiles` | Работает | ✅ |
 | 7.5 | «Я ПОЕДУ» / отмена | Toggle attendance | Работает | ✅ |
 | 7.6 | Подписаться на уведомления | INSERT `meeting_subscriptions` | Работает | ✅ |
-| 7.7 | Получить уведомление при подтверждении даты | Trigger в БД | Работает (клиентская часть) | ✅ |
-| 7.8 | Прогресс сбора средств | `fund_progress` из VIEW (на базе `fund_goal`) | Работает | ✅ |
+| 7.7 | Получить уведомление при подтверждении даты | Trigger в БД | Работает | ✅ |
+| 7.8 | Прогресс сбора средств | `fund_progress` из VIEW | Работает | ✅ |
 | 7.9 | Кнопка CloudTips: копировать ссылку | Clipboard API | Работает | ✅ |
 | 7.10 | Кнопка CloudTips: перейти | `window.open` | Работает | ✅ |
 | 7.11 | Bell (подписка) только если нет `meeting_time` | Условная логика | Работает | ✅ |
-| 7.12 | `meeting_time` как time type — `.slice(0,5)` | Может вернуть `null` → крэш | Исправлено, добавлена защита | ✅ |
+| 7.12 | `meeting_time` как time type — `.slice(0,5)` | Защита от null | Исправлено | ✅ |
+| 7.13 | Яндекс карта в детальной | iframe embed | Работает | ✅ |
+| 7.14 | Google Calendar интеграция | Ссылка генерируется | Работает | ✅ |
+| 7.15 | Счётчик «дней до встречи» | Вычисляется из date | Работает | ✅ |
+| 7.16 | Обсуждение (meeting_comments) | Чат с replies | Работает | ✅ |
+| 7.17 | Жалобы на комментарии | INSERT `reports` | Работает | ✅ |
+| 7.18 | Поиск по встречам | Фильтр по village, location, organizer | Работает | ✅ |
 
 ### Сценарий 8: Встречи сёл — организатор
 
 | # | Действие | Ожидание | Факт | Статус |
 |---|----------|----------|------|--------|
-| 8.1 | Создать встречу (форма) | Модалка с полями | Работает | ✅ |
+| 8.1 | Создать встречу (shadcn Dialog) | Модалка с полями | Работает | ✅ |
 | 8.2 | Кнопка «Изменить» в детальной | Только автор/admin | Работает | ✅ |
 | 8.3 | `/meetings/:id/edit` — полная форма | Все поля встречи | Работает | ✅ |
-| 8.4 | Обновить сумму сбора / CloudTips | Patch `fund_current`, `fund_cloudtips_url`, `fund_goal` | Работает через editingFund modal | ✅ |
-| 8.5 | Участники получают уведомление при изменении | Trigger в БД при UPDATE meetings | Работает (клиентская часть) | ✅ |
+| 8.4 | Обновить сумму сбора / CloudTips | Patch через fund edit modal | Работает | ✅ |
+| 8.5 | Участники получают уведомление при изменении | Trigger в БД | Работает | ✅ |
 | 8.6 | Удалить встречу | Только admin | Работает (в MeetingEdit) | ✅ |
 | 8.7 | Статус встречи (upcoming/completed/cancelled) | Select в форме | Работает | ✅ |
 
@@ -194,10 +227,14 @@ Telegram Bot (Этап 16): Интеграция с ботом для уведо
 | 9.3 | Real-time новые уведомления | Supabase channel INSERT | Работает | ✅ |
 | 9.4 | Клик → переход к объекту | `navigate(n.link)` | Работает | ✅ |
 | 9.5 | Отметить прочитанным | UPDATE `is_read = true` | Работает | ✅ |
-| 9.6 | Отметить все прочитанными | Batch UPDATE | Работает | ✅ |
-| 9.7 | Push-уведомления (закрытое приложение) | `Notification.requestPermission()` → VAPID | Запрос разрешения есть, реальный push ❌ | ⚠️ |
-| 9.8 | SW: обработчик `push` event | В `sw.js` написан | Handler есть, нет VAPID-сервера | ⚠️ |
-| 9.9 | RLS: пользователь видит только свои уведомления | `user_id = auth.uid()` | Реализовано в БД | ✅ |
+| 9.6 | Отметить все прочитанными | Batch UPDATE через CheckCheck | Работает | ✅ |
+| 9.7 | **Очистить прочитанные** | DELETE прочитанных, кнопка Trash2 | **Реализовано** | ✅ |
+| 9.8 | **Группировка по link/объекту** | groupedNotifications с useMemo | **Реализовано** | ✅ |
+| 9.9 | Группа: показ нескольких сообщений | До 3 body в группе | Работает | ✅ |
+| 9.10 | Push-уведомления (закрытое приложение) | VAPID subscribe + Edge Function | Edge Function написана, VAPID сохраняется | ⚠️ |
+| 9.11 | iOS PWA: инструкция «Добавить на экран» | Показ banner с Share icon | Работает | ✅ |
+| 9.12 | Android Chrome: запрос разрешения | `Notification.requestPermission()` | Работает | ✅ |
+| 9.13 | RLS: пользователь видит только свои | `user_id = auth.uid()` | Реализовано в БД | ✅ |
 
 ### Сценарий 10: Профиль
 
@@ -205,30 +242,36 @@ Telegram Bot (Этап 16): Интеграция с ботом для уведо
 |---|----------|----------|------|--------|
 | 10.1 | Открыть профиль (auth) | Данные из Supabase `profiles` | Работает | ✅ |
 | 10.2 | Аватар / имя / email | Из `profile` объекта | Работает | ✅ |
-| 10.3 | Рейтинг доверия | Расчёт на клиенте из stats | Реализовано в БД и коде | ✅ |
+| 10.3 | Рейтинг доверия | Из `profiles.trust_score` в БД | Работает | ✅ |
 | 10.4 | Счётчики (отклики, обращения, встречи) | Запросы к БД в `useEffect` | Работает | ✅ |
-| 10.5 | Бейджи достижений | Вычисляются из счётчиков | Работает | ✅ |
-| 10.6 | Переключить язык | `i18n.changeLanguage` | Работает (localStorage) | ✅ |
-| 10.7 | Язык сохраняется в profile.language | UPDATE `profiles` | Реализовано в Profile.tsx | ✅ |
+| 10.5 | Бейджи достижений | Из `profiles.badges` JSONB | Работает | ✅ |
+| 10.6 | Переключить язык | `i18n.changeLanguage` | Работает (localStorage + БД) | ✅ |
+| 10.7 | Язык сохраняется в profile.language | UPDATE `profiles` | Реализовано | ✅ |
 | 10.8 | Модалки: Настройки, Уведомления, Безопасность | Открываются | Работает | ✅ |
 | 10.9 | Ссылка на Админ-панель (admin/moderator) | Кнопка в профиле | Работает | ✅ |
 | 10.10 | Выход — подтверждение | Модалка → `signOut()` | Работает | ✅ |
 | 10.11 | Профиль без auth | Экран «Войти» | Работает | ✅ |
+| 10.12 | Telegram привязка | Генерация кода → бот | Работает | ✅ |
+| 10.13 | Загрузка аватара | Storage upload | Работает | ✅ |
+| 10.14 | Редактирование имени и @username | Inline форма | Работает | ✅ |
+| 10.15 | Публичный профиль `/user/:id` | Кликабельные имена в комментариях | Работает | ✅ |
 
 ### Сценарий 11: Навигация и UI
 
 | # | Действие | Ожидание | Факт | Статус |
 |---|----------|----------|------|--------|
 | 11.1 | Нижнее меню: 5 табов | Главная/Намазы/Ярдым/Встречи/Разделы | Работает с featureToggles | ✅ |
-| 11.2 | Активный таб подсвечивается | `isActive()` | Работает | ✅ |
-| 11.3 | Хедер: название текущей страницы | `PAGE_TITLES` map | Работает | ✅ |
-| 11.4 | Кнопка «Назад» в хедере | `navigate(-1)` | Работает | ✅ |
+| 11.2 | Активный таб подсвечивается + анимация | motion/react layoutId | Работает | ✅ |
+| 11.3 | SectionTabs: общая навигация по разделам | Вкладки-табы с анимацией | Работает | ✅ |
+| 11.4 | Хедер: shadcn Button, профиль, поддержка | Header.tsx | Работает | ✅ |
 | 11.5 | Страница `/sections` — хаб | Доп. разделы | Работает | ✅ |
 | 11.6 | Разделы скрываются через Feature Toggles | `featureToggles.calendar` etc | Работает | ✅ |
 | 11.7 | PWA Install Prompt | Android: `beforeinstallprompt`; iOS: инструкция | Работает | ✅ |
 | 11.8 | Dismiss prompt → localStorage | Не показывать повторно | Работает | ✅ |
 | 11.9 | Приложение работает offline | Service Worker cache | Кэш улучшен | ✅ |
-| 11.10 | Анимации fade-in / slide-up | CSS классы | Работает | ✅ |
+| 11.10 | Анимации fade-in / slide-up + motion | CSS + framer-motion | Работает | ✅ |
+| 11.11 | Warm off-white палитра CSS переменных | `--background: 60 20% 98%` | Реализовано | ✅ |
+| 11.12 | shadcn/ui компоненты | Button, Input, Label, Textarea, Dialog | Реализовано | ✅ |
 
 ### Сценарий 12: Поддержка
 
@@ -238,7 +281,7 @@ Telegram Bot (Этап 16): Интеграция с ботом для уведо
 | 12.2 | Копировать ссылку | Clipboard API | Работает | ✅ |
 | 12.3 | Перейти к оплате | `window.open` | Работает | ✅ |
 | 12.4 | Кнопка «Поддержать» на главной | Блок на Home.tsx | Работает | ✅ |
-| 12.5 | Поделиться приложением | `navigator.share` / clipboard fallback | Работает | ✅ |
+| 12.5 | Heart иконка в хедере | Header.tsx | Работает | ✅ |
 
 ### Сценарий 13: Администратор
 
@@ -246,384 +289,253 @@ Telegram Bot (Этап 16): Интеграция с ботом для уведо
 |---|----------|----------|------|--------|
 | 13.1 | Вкладка «Статистика» | Данные из `admin_stats` VIEW | Работает | ✅ |
 | 13.2 | Вкладка «Пользователи» | Список с пагинацией (SWR) | Работает | ✅ |
-| 13.3 | Изменить роль через `set_user_role` RPC | RPC function в Supabase | Реализовано | ✅ |
+| 13.3 | Изменить роль через `set_user_role` RPC | RPC function + fallback direct update | Реализовано | ✅ |
 | 13.4 | Вкладка «Модерация» | Жалобы, pending Ярдым, Audit Log | Работает | ✅ |
 | 13.5 | CRUD событий календаря | Supabase `ethno_events` | Работает | ✅ |
-| 13.6 | Закрыть обращение Ярдым | UPDATE `status = 'completed'` | Работает | ✅ |
-| 13.7 | Список встреч → детальная | `navigate('/meetings/:id')` | Работает | ✅ |
-| 13.8 | CRUD обрядов и шагов | Supabase `rituals` + `ritual_steps` | ✅ |
-| 13.9 | Feature Toggles | Zustand persist | Работает (синхронизировано с БД) | ✅ |
-| 13.10 | Журнал действий (Audit Log) | Запись при каждом действии | `logAudit()` вызывается | ✅ |
-| 13.11 | Жалобы: одобрить/отклонить | UPDATE `reports.status` | Работает | ✅ |
-| 13.12 | Одобрить/отклонить pending Ярдым | UPDATE `help_requests.status` | Работает | ✅ |
+| 13.6 | Подтверждение перед удалением | deleteConfirm modal | Работает | ✅ |
+| 13.7 | CRUD обрядов и шагов | Supabase `rituals` + `ritual_steps` | Работает | ✅ |
+| 13.8 | Feature Toggles | Zustand persist | Работает | ✅ |
+| 13.9 | Журнал действий (Audit Log) | `logAudit()` через RPC | Работает | ✅ |
+| 13.10 | Жалобы: одобрить/отклонить | UPDATE `reports.status` | Работает | ✅ |
+| 13.11 | Одобрить/отклонить pending Ярдым | UPDATE `help_requests.status` + уведомление | Работает | ✅ |
+| 13.12 | Перемещение шагов обряда ↑↓ | `moveStep()` | Работает | ✅ |
 
 ### Сценарий 14: Модератор
 
 | # | Действие | Ожидание | Факт | Статус |
 |---|----------|----------|------|--------|
-| 14.1 | Вход и доступ к `/admin` | role = 'moderator' | Работает (ProtectedRoute) | ✅ |
+| 14.1 | Вход и доступ к `/admin` | role = 'moderator' | Работает | ✅ |
 | 14.2 | Начальный таб = «Модерация» | `isModerator ? 'moderation' : 'stats'` | Работает | ✅ |
 | 14.3 | Скрыты вкладки: Статистика, Пользователи, Настройки | `show: !isModerator` | Работает | ✅ |
-| 14.4 | Видит: Модерация, Календарь, Ярдым, Встречи, Обряды | Доступно | Работает | ✅ |
-| 14.5 | Не может менять роли пользователей | `if (isModerator) return` | Работает | ✅ |
+| 14.4 | Не может менять роли пользователей | `if (isModerator) return` | Работает | ✅ |
 
 ### Сценарий 15: Публичные профили (Сообщество)
 
 | # | Действие | Ожидание | Факт | Статус |
 |---|----------|----------|------|--------|
-| 15.1 | Переход в профиль из Ярдым | Клик по автору открывает `/user/:id` | Работает | ✅ |
-| 15.2 | Просмотр данных профиля | Имя, аватар, роль, село, рейтинг | Работает | ✅ |
-| 15.3 | Кнопка "Написать сообщение" | Заглушка (чаты в разработке) | Работает | ✅ |
+| 15.1 | Переход в профиль из комментариев | Клик по имени открывает `/user/:id` | Работает | ✅ |
+| 15.2 | Просмотр данных профиля | Имя, аватар, роль, рейтинг, бейджи | Работает | ✅ |
+| 15.3 | Кликабельные @упоминания | Переход к профилю по username | Работает | ✅ |
 
 ---
 
-## БЛОК 2 — КРИТИЧЕСКИЕ БАГИ (исправить срочно)
+## БЛОК 2 — КРИТИЧЕСКИЕ БАГИ (все устранены)
 
-### ✅ БАГ-1: `set_user_role` RPC не существует
-**Файл:** `src/pages/Admin.tsx` → `updateUserRole()`
-**Симптом:** Смена роли пользователя молча падает или возвращает ошибку.
-**Решение:** Создан файл миграции `supabase/migrations/20260327_init.sql`. Необходимо выполнить в Supabase SQL Editor.
+### ✅ БАГ-1: `set_user_role` RPC
+**Статус:** Исправлен. Миграция создана, RPC function реализована. Добавлен fallback на прямое обновление.
 
 ### ✅ БАГ-2: `meeting_time.slice(0,5)` крэш при null
-**Файл:** `src/pages/MeetingDetail.tsx` строка с `.slice(0,5)`
-**Симптом:** Если `meeting_time = null`, вызов `.slice()` на null → TypeError.
-**Решение:** Исправлено, добавлена защита `meeting.meeting_time ? ... : ''`.
+**Статус:** Исправлен. Защита добавлена.
 
-### ✅ БАГ-3: Отсутствие данных намазов апрель–декабрь 2026
-**Файл:** `src/data/prayerTimes.ts`
-**Симптом:** Пустой экран при переходе на даты после 31 марта 2026.
-**Решение:** Добавлены данные на весь апрель 2026 в код и БД.
+### ✅ БАГ-3: Отсутствие данных намазов апрель 2026
+**Статус:** Исправлен. Данные до конца апреля 2026 в БД и static fallback.
 
 ### ✅ БАГ-4: Named FK для `help_request_comments`
-**Файл:** `src/pages/MicroYardym.tsx`
-**Запрос:** `profiles!help_request_comments_author_id_fkey`
-**Симптом:** Supabase не знает о named FK → join не работает → комментарии без автора.
-**Решение:** Создан файл миграции `supabase/migrations/20260327_init.sql`. Необходимо выполнить в Supabase SQL Editor.
+**Статус:** Исправлен. Именованный FK создан в миграции.
 
-### ✅ БАГ-5: `profiles.trust_score` может не существовать в схеме
-**Файл:** `src/pages/Profile.tsx`
-**Симптом:** `profile?.trust_score` возвращает undefined, отображается NaN или undefined.
-**Решение:** Создан файл миграции `supabase/migrations/20260327_init.sql`. Необходимо выполнить в Supabase SQL Editor.
+### ✅ БАГ-5: `profiles.trust_score` и `badges` не существовали
+**Статус:** Исправлен. Колонки добавлены в миграции.
 
 ---
 
-## БЛОК 3 — ЭТАПЫ РЕАЛИЗАЦИИ (приоритизированные)
+## БЛОК 3 — ЭТАПЫ РЕАЛИЗАЦИИ
 
----
+### ЭТАП A — КРИТИЧЕСКАЯ СТАБИЛИЗАЦИЯ ✅ ЗАВЕРШЁН
 
-### ЭТАП A — КРИТИЧЕСКАЯ СТАБИЛИЗАЦИЯ (делать первым)
-> Цель: устранить всё, что ломает базовые сценарии
+- [x] A1 — SQL-миграции созданы и применены
+- [x] A2 — RLS настроена для всех таблиц
+- [x] A3 — Trigger автосоздания профиля
+- [x] A4 — Данные намазов апрель 2026
+- [x] A5 — Мелкие баги исправлены
 
-**A1. Создать SQL-миграции в Supabase**
-- [x] A1.1 — Проверить существование всех таблиц из БЛОК 0 через Dashboard
-- [x] A1.2 — Создать `set_user_role` RPC function (БАГ-1)
-- [x] A1.3 — Добавить `trust_score INT DEFAULT 100` и `badges JSONB DEFAULT '[]'` в `profiles` (БАГ-5)
-- [x] A1.4 — Убедиться что `prayer_completions` имеет уникальный индекс `(user_id, date, prayer_key)`
-- [x] A1.5 — Создать named FK для `help_request_comments.author_id → profiles.id`
-- [x] A1.6 — Проверить что `meeting_subscriptions` существует с колонками `(meeting_id, user_id, created_at)`
-- [x] A1.7 — Проверить `user_notifications` с колонками: `(id, user_id, type, title, body, link, is_read, created_at)`
-- [x] A1.8 — Создать/проверить `admin_stats` VIEW
-- [x] A1.9 — Создать/проверить `help_requests_with_count` VIEW с полем `responses_count` и `cloudtips_url`
-- [x] A1.10 — Создать/проверить `meetings_with_stats` VIEW с `attendees_count`, `subscribers_count`, `fund_progress` (используя `fund_goal`)
+### ЭТАП B — TRIGGERS И АВТОМАТИЗАЦИЯ ✅ ЗАВЕРШЁН
 
-**A2. Настроить RLS**
-- [x] A2.1 — `profiles`: SELECT all (public), UPDATE own, INSERT auth trigger (Миграция 20260328_rls.sql)
-- [x] A2.2 — `prayer_completions`: SELECT/INSERT/DELETE own (`user_id = auth.uid()`) (Миграция 20260328_rls.sql)
-- [x] A2.3 — `help_responses`: INSERT auth, UNIQUE constraint `(request_id, user_id)` (Миграция 20260328_rls.sql)
-- [x] A2.4 — `meeting_attendees`: INSERT/DELETE own, SELECT all (Миграция 20260328_rls.sql)
-- [x] A2.5 — `user_notifications`: SELECT/UPDATE own `user_id` (Миграция 20260328_rls.sql)
-- [x] A2.6 — `audit_logs`: INSERT admin/moderator, SELECT admin only (Миграция 20260328_rls.sql)
-- [x] A2.7 — `reports`: INSERT auth, SELECT admin/moderator (Миграция 20260328_rls.sql)
-- [x] A2.8 — `meetings`: SELECT all, INSERT auth, UPDATE own/admin (Миграция 20260328_rls.sql)
-- [x] A2.9 — `help_requests`: SELECT all, INSERT auth, UPDATE own/admin (Миграция 20260328_rls.sql)
+- [x] B1 — Уведомление автору при отклике на Ярдым
+- [x] B2 — Уведомление подписчиков при обновлении встречи
+- [x] B3 — Автосохранение Trust Score через triggers
+- [x] B4 — Автоматические бейджи через triggers
 
-**A3. Trigger: автосоздание профиля**
-- [x] A3.1 — Создать trigger `on_auth_user_created` → INSERT INTO `profiles` (id, email, name from metadata, provider)
-- [x] A3.2 — Проверить что Google OAuth передаёт `full_name` в metadata
-- [x] A3.3 — Проверить что Magic Link корректно создаёт профиль
+### ЭТАП C — SUPABASE НАСТРОЙКА ✅ ЗАВЕРШЁН
 
-**A4. Данные намазов (БАГ-3)**
-- [x] A4.1 — Рассчитать намазы для Симферополя на апрель 2026 (полный месяц)
-- [x] A4.2 — Загрузить данные в Supabase `prayer_times` (Миграция 20260329_prayer_data_extended.sql)
-- [x] A4.3 — Добавить статический fallback в `src/data/prayerTimes.ts` на апрель
-- [x] A4.4 — Протестировать переход через 31 марта → 1 апреля
-
-**A5. Исправить мелкие баги**
-- [x] A5.1 — Защита от null в `meeting_time.slice()` (БАГ-2)
-- [x] A5.2 — Добавить `try/catch` вокруг `JSON.parse` в `admin_stats` fetcher
-- [x] A5.3 — Обработать пустой массив `reports` и `auditLogs` без крэша
-
----
-
-### ЭТАП B — БАЗА ДАННЫХ: TRIGGERS И АВТОМАТИЗАЦИЯ
-> Цель: живые уведомления и автоматические действия
-
-**B1. Trigger: уведомление автору при отклике на Ярдым**
-```sql
--- При INSERT в help_responses → INSERT в user_notifications для author_id
-CREATE OR REPLACE FUNCTION notify_help_author() RETURNS trigger AS $$
-BEGIN
-  INSERT INTO user_notifications (user_id, type, title, body, link)
-  SELECT hr.author_id, 'help_response',
-         'Новый отклик на ваше обращение',
-         'Кто-то откликнулся на вашу просьбу о помощи',
-         '/micro-yardym'
-  FROM help_requests hr WHERE hr.id = NEW.request_id AND hr.author_id IS NOT NULL;
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-
-CREATE TRIGGER on_help_response AFTER INSERT ON help_responses
-FOR EACH ROW EXECUTE FUNCTION notify_help_author();
-```
-- [x] B1.1 — Создать функцию `notify_help_author()` (Реализовано в БД)
-- [x] B1.2 — Создать trigger `on_help_response` (Реализовано в БД)
-- [x] B1.3 — Протестировать: отклик → колокольчик автора загорается
-
-**B2. Trigger: уведомление подписчиков при обновлении встречи**
-```sql
--- При UPDATE meetings → notify всех из meeting_subscriptions + meeting_attendees
-```
-- [x] B2.1 — Создать функцию `notify_meeting_subscribers()`
-- [x] B2.2 — Создать trigger `on_meeting_update` (AFTER UPDATE ON meetings)
-- [x] B2.3 — Уведомление типа `meeting_update`: «Встреча [village] обновлена»
-- [x] B2.4 — Уведомление типа `meeting_date_set` при смене `meeting_time` с null на значение
-- [x] B2.5 — Протестировать: редактировать встречу → уведомления у подписчиков
-
-**B3. Trigger: автосохранение Trust Score**
-- [x] B3.1 — Trigger на INSERT `help_responses` → UPDATE `profiles.trust_score += 10`
-- [x] B3.2 — Trigger на INSERT `help_requests` → UPDATE `profiles.trust_score += 5`
-- [x] B3.3 — Trigger на INSERT `meetings` → UPDATE `profiles.trust_score += 20`
-- [x] B3.4 — Убрать client-side расчёт из `Profile.tsx`, читать `profile.trust_score` из БД
-
-**B4. Trigger: автоматические бейджи**
-- [x] B4.1 — Функция `update_user_badges(user_id)` → проверяет пороги и обновляет `profiles.badges`
-- [x] B4.2 — Вызывать из triggers trust_score
-- [x] B4.3 — Читать `profile.badges` в `Profile.tsx` вместо client-side вычисления
-
----
-
-### ЭТАП C — СУПЕРBASE: ЗАВЕРШЕНИЕ НАСТРОЙКИ
-> Цель: корректная работа с реальными данными в продакшене
-
-**C1. Переменные окружения**
-- [x] C1.1 — Создать `.env.example` в репозитории:
-  ```
-  VITE_SUPABASE_URL=https://xxx.supabase.co
-  VITE_SUPABASE_ANON_KEY=eyJ...
-  VITE_SUPPORT_URL=https://pay.cloudtips.ru/p/8a27e9ab
-  VITE_VAPID_PUBLIC_KEY=BD6HcwhDmsVV41he4vOhZ9L6MI8qGQR5ZDRxTJpJN_cogqm0VFeMH0pekjQw24AHXZGYpV1U9dA-mzydQXxgznA
-  ```
-- [x] C1.2 — Убедиться что `.env.local` в `.gitignore`
-- [x] C1.3 — Проверить Vercel Environment Variables: все три переменные установлены
-
-**C2. Auth настройки в Supabase Dashboard**
-- [x] C2.1 — Email: включить Magic Link, установить redirect URL `https://orazaru.vercel.app/auth/callback`
-- [x] C2.2 — Google: включить OAuth, добавить Client ID + Secret, Redirect URL
-- [x] C2.3 — Site URL: установить `https://orazaru.vercel.app`
-- [x] C2.4 — Проверить шаблон письма Magic Link (русский текст)
-
-**C3. Storage (если потребуются аватары)**
-- [x] C3.1 — Создать bucket `avatars` в Supabase Storage
-- [x] C3.2 — RLS: SELECT all, INSERT/UPDATE own
-- [x] C3.3 — Добавить UI загрузки аватара в Profile.tsx
-
----
+- [x] C1 — Переменные окружения
+- [x] C2 — Auth настройки
+- [x] C3 — Storage (аватары)
 
 ### ЭТАП D — ФУНКЦИОНАЛЬНЫЕ УЛУЧШЕНИЯ
 
-**D1. Данные календаря и намазов**
-- [ ] D1.1 — Подготовить данные намазов на 2027 (qmdi.ru)
-- [ ] D1.2 — Загрузить в Supabase `prayer_times`
-- [ ] D1.3 — Обновить статический fallback в коде
-- [x] D1.4 — Интеграция базы мусульманских праздников и памятных дат на 2026 год в `ethno_events`
+**D1. Данные намазов**
+- [ ] D1.1 — Подготовить данные намазов на май–декабрь 2026 (qmdi.ru) ❌
+- [ ] D1.2 — Загрузить в Supabase `prayer_times` ❌
+- [x] D1.3 — Статический fallback на апрель 2026
+- [x] D1.4 — Этно-праздники 2026 в `ethno_events`
 
-**D2. Сохранение языка в профиле**
-- [x] D2.1 — При `i18n.changeLanguage(lang)` → UPDATE `profiles.language = lang` (Реализовано в Profile.tsx)
-- [x] D2.2 — При загрузке профиля → `i18n.changeLanguage(profile.language ?? 'ru')` (Реализовано в useAuth.ts)
-- [x] D2.3 — Убрать Zustand `language` state (дублирование с i18next) (Выполнено)
+**D2. Локализация**
+- [x] D2.1 — Сохранение языка в БД при смене
+- [x] D2.2 — Загрузка языка из профиля при входе
+- [x] D2.3 — Убрать дублирование Zustand language
 
-**D3. Push-уведомления (полная реализация)** ✅
-- [x] D3.1 — Сгенерировать VAPID ключи: `npx web-push generate-vapid-keys`
-- [x] D3.2 — Добавить VITE_VAPID_PUBLIC_KEY в `.env`
-- [x] D3.3 — В `Notifications.tsx` после `requestPermission`:
-  ```js
-  const sub = await sw.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: VAPID_PUBLIC })
-  await supabase.from('push_subscriptions').upsert({ user_id, subscription: sub })
-  ```
-- [x] D3.4 — Создать таблицу `push_subscriptions(user_id, subscription JSONB, created_at)`
-- [x] D3.5 — Создать Edge Function в Supabase для отправки push через web-push (Код подготовлен)
-- [x] D3.6 — Вызывать Edge Function из triggers уведомлений (SQL подготовлен)
-- [x] D3.7 — Группировка уведомлений и фикс для iOS PWA
-- [x] D3.8 — Тестировать на Android Chrome (iOS Safari не поддерживает Push в PWA)
-- [x] D3.9 — Автоматическое удаление просроченных подписок (404/410)
+**D3. Push-уведомления**
+- [x] D3.1 — VAPID ключи сгенерированы
+- [x] D3.2 — VITE_VAPID_PUBLIC_KEY в env
+- [x] D3.3 — Subscribe + сохранение в `push_subscriptions`
+- [x] D3.4 — Таблица `push_subscriptions`
+- [x] D3.5 — Edge Function `send-push` написана
+- [x] D3.6 — SQL trigger вызывает Edge Function
+- [x] D3.7 — Группировка уведомлений + iOS фикс
+- [ ] D3.8 — **Протестировать реальную отправку на Android Chrome** ⚠️
+- [ ] D3.9 — **Настроить VAPID в Supabase secrets для Edge Function** ❌
 
-**D4. Полный i18n (крымскотатарский)** ✅
-- [x] D4.1 — Аудит всех hardcoded строк в компонентах (Выполнено для основных разделов)
-- [x] D4.2 — Добавить ключи перевода в `src/i18n.ts` для всех UI строк (Обновлены названия разделов: Койдешлер, Ярдым, Обряды, Календарь)
-- [x] D4.3 — Использовать `useTranslation()` вместо hardcoded строк (Внедрено в SectionTabs и страницах)
+**D4. i18n (крымскотатарский)**
+- [x] D4.1 — Основные разделы переведены
+- [x] D4.2 — Админ-панель переведена
+- [x] D4.3 — SectionTabs и навигация переведены
+- [ ] D4.4 — Проверить все хардкод строки в PrayerTimes.tsx ⚠️
 
 **D5. Offline-режим PWA**
-- [x] D5.1 — Обновить `sw.js`: кэшировать JS/CSS бандлы при install
-- [x] D5.2 — Stale-while-revalidate стратегия для API запросов к Supabase
-- [x] D5.3 — Показывать offline-баннер если нет сети
-- [x] D5.4 — Кэшировать данные намазов на текущую неделю (через SW API cache)
+- [x] D5.1 — SW кэширует статику
+- [x] D5.2 — Supabase GET запросы кэшируются
+- [x] D5.3 — Offline-баннер
+- [x] D5.4 — Данные намазов кэшируются
 
-**D6. Автор может редактировать шаги обряда (Admin)** ✅
-- [x] D6.1 — В вкладке «Обряды» Admin: при клике на обряд → список шагов
-- [x] D6.2 — CRUD для `ritual_steps`: добавить, редактировать, удалить шаг
-- [x] D6.3 — Поле `step_order`: перетаскивание или кнопки ↑↓
+**D6. Управление шагами обрядов (Admin)**
+- [x] D6.1 — Клик на обряд → список шагов
+- [x] D6.2 — CRUD для `ritual_steps`
+- [x] D6.3 — Кнопки ↑↓ для порядка шагов
 
----
+### ЭТАП E — UX И ДИЗАЙН-ПОЛИРОВКА ✅ ЗАВЕРШЁН
 
-### ЭТАП E — UX И ДИЗАЙН-ПОЛИРОВКА
-
-**E1. Состояния загрузки и ошибок**
-- [x] E1.1 — Добавить Error Boundary вокруг `<App />` → красивый экран ошибки
-- [x] E1.2 — Skeleton screens вместо `animate-pulse` в списках (более точная форма)
-- [x] E1.3 — Toast-уведомления унифицированы через `sonner`
-- [x] E1.4 — Пустые состояния: добавлены иллюстрации/иконки для списков без данных
-
-**E2. Форма создания обращения (Ярдым)**
-- [x] E2.1 — Валидация телефона: маска `+7 (___) ___-__-__` добавлена в Ярдым и Встречи
-- [x] E2.2 — Счётчик символов для описания (макс 500)
-- [x] E2.3 — Подтверждение после публикации: анимированный checkmark в MicroYardym
-
-**E3. Детальная встречи — улучшения**
-- [x] E3.1 — Карта с меткой места (Yandex Maps iframe) — `src/pages/MeetingDetail.tsx`
-- [x] E3.2 — Добавить в календарь: Google Calendar ссылка в `src/pages/MeetingDetail.tsx`
-- [x] E3.3 — Счётчик «дней до встречи» добавлен в MeetingDetail
-
-**E4. Главная страница и Навигация**
-- [x] E4.1 — Текущий намаз: подсветка ближайшего по времени (реализовано в Home)
-- [x] E4.2 — Обратный отсчёт до следующего намаза (реализовано в Home)
-- [x] E4.3 — Виджет: сколько намазов выполнено сегодня (реализовано в Home)
-- [x] E4.4 — Удаление громоздкого блока приветствия для экономии места
-- [x] E4.5 — Единая система вкладок (SectionTabs) для навигации по разделам
-- [x] E4.6 — Иконка поддержки проекта (CloudTips) в глобальном хедере
-- [x] E4.7 — Удаление дублирующихся заголовков на страницах разделов
-- [x] E4.8 — Переименование разделов (Койдешлер, Ярдым, Обряды, Календарь) и обновление i18n
-
----
+- [x] E1.1 — Error Boundary
+- [x] E1.2 — Skeleton screens
+- [x] E1.3 — Toast через sonner
+- [x] E1.4 — Пустые состояния с иконками
+- [x] E2.1 — Маска телефона
+- [x] E2.2 — Счётчик символов описания
+- [x] E2.3 — Анимированный checkmark после публикации
+- [x] E3.1 — Яндекс карта в детальной встречи
+- [x] E3.2 — Google Calendar ссылка
+- [x] E3.3 — Счётчик дней до встречи
+- [x] E4.1-E4.8 — Главная страница и навигация
 
 ### ЭТАП F — БЕЗОПАСНОСТЬ И ПРОИЗВОДИТЕЛЬНОСТЬ
 
 **F1. Безопасность**
-- [ ] F1.1 — Проверить все Supabase RLS через `supabase inspect db lint`
-- [x] F1.2 — Заголовки CSP в `vercel.json` (Content-Security-Policy) добавлены
-- [x] F1.3 — Ограничить `admin_stats` VIEW только для admin через RLS/SECURITY DEFINER (реализовано через WHERE EXISTS)
-- [x] F1.4 — `audit_logs`: запись через RPC `log_admin_action` (SECURITY DEFINER)
-- [x] F1.5 — Rate limiting на создание обращений Ярдым (макс 3 активных) — `supabase/migrations/20260329_rate_limiting.sql`
+- [ ] F1.1 — `supabase inspect db lint` — RLS аудит ❌
+- [x] F1.2 — CSP заголовки в `vercel.json`
+- [x] F1.3 — `admin_stats` VIEW ограничен для admin
+- [x] F1.4 — `audit_logs` только через RPC
+- [x] F1.5 — Rate limiting: макс 3 активных обращения
 
 **F2. Производительность**
-- [x] F2.1 — SWR добавлен во все основные хуки (useHelpRequests, useMeetings, useEthnoEvents, useRituals, useNotifications, useAuth, usePrayerTimes)
-- [ ] F2.2 — Пагинация для `notifications` (сейчас лимит 50)
-- [ ] F2.3 — Пагинация для встреч при большом количестве
-- [ ] F2.4 — `React.memo` для `RequestCard` в MicroYardym — ❌
-- [ ] F2.5 — `useMemo` для фильтрации в `MicroYardym` — ❌
-- [ ] F2.6 — Lazy loading страниц через `React.lazy` + `Suspense` — ❌
+- [x] F2.1 — SWR во всех основных хуках
+- [ ] F2.2 — Пагинация для `notifications` (лимит 50) ❌
+- [ ] F2.3 — Пагинация для встреч ❌
+- [ ] F2.4 — `React.memo` для `RequestCard` в MicroYardym ❌
+- [ ] F2.5 — `useMemo` для `filteredRequests` в MicroYardym ❌
+- [ ] F2.6 — Lazy loading страниц через `React.lazy + Suspense` ❌
 
 **F3. PWA качество**
-- [x] F3.1 — Добавить все иконки `icon-72x72.png` ... `icon-512x512.png` в `/public/` — ✅
-- [ ] F3.2 — Запустить Lighthouse audit → цель PWA score 95+
-- [x] F3.3 — Добавить `apple-touch-icon` в `index.html` — ✅
-- [ ] F3.4 — Проверить standalone mode на iOS Safari
-
----
+- [x] F3.1 — Все иконки PWA в `/public/`
+- [ ] F3.2 — Lighthouse audit, цель PWA score 95+ ❌
+- [x] F3.3 — `apple-touch-icon` в `index.html`
+- [ ] F3.4 — Проверить standalone mode на iOS Safari ❌
 
 ### ЭТАП G — АНАЛИТИКА И МОНИТОРИНГ
 
-**G1. Яндекс.Метрика**
-- [x] G1.1 — Убрать `ssr:true` из init (SPA не использует SSR) — `src/components/YandexMetrika.tsx`
-- [x] G1.2 — Настроить цели: клик «Я ПОЕДУ», создание обращения, вход в аккаунт
-- [x] G1.3 — Проверить что `ym(..., 'hit', ...)` корректно трекает маршруты
+- [x] G1.1 — Яндекс.Метрика с hit трекингом маршрутов
+- [ ] G1.2 — Цели в Метрике (Я ПОЕДУ, создать обращение, вход) ❌
+- [ ] G2.1 — Sentry для JS ошибок ❌
 
-**G2. Sentry (опционально)**
-- [ ] G2.1 — Подключить Sentry для отслеживания JS ошибок — ❌
-- [ ] G2.2 — Добавить `VITE_SENTRY_DSN` в переменные окружения
+### ЭТАП H — СИСТЕМА ОБСУЖДЕНИЙ ✅ ЗАВЕРШЁН
 
----
-
-## БЛОК 4 — СТАТУС НЕЗАКРЫТЫХ ЗАДАЧ ИЗ ПРЕДЫДУЩИХ CHECKLIST
-
----
-
-### ЭТАП H — СИСТЕМА ОБСУЖДЕНИЙ И УПОМИНАНИЙ (ЭТАП 15)
-> Цель: превратить комментарии в полноценные дискуссии
-
-**H1. Древовидные комментарии (Threaded Comments)**
-- [x] H1.1 — Добавить `parent_id` в `help_request_comments` и `meeting_comments` (SQL)
-- [x] H1.2 — UI: кнопка «Ответить» под каждым комментарием
-- [x] H1.3 — UI: визуальное смещение ответов (индексация)
-- [x] H1.4 — UI: цитирование оригинала в ответах (стиль Telegram)
-- [x] H1.5 — Уведомление автору родительского комментария при ответе
-
-**H2. Улучшение упоминаний (@mentions)**
-- [x] H2.1 — Автодополнение при вводе `@` (Реализовано)
-- [x] H2.2 — Подсветка упоминаний в тексте комментария (синий цвет/ссылка)
-- [x] H2.3 — Кликабельные упоминания (переход в профиль)
+- [x] H1.1 — `parent_id` в комментариях
+- [x] H1.2 — Кнопка «Ответить»
+- [x] H1.3 — Визуальное смещение ответов с отступом
+- [x] H1.4 — Цитирование оригинала в стиле Telegram
+- [x] H1.5 — Уведомление автору родительского комментария
+- [x] H2.1 — Автодополнение @mentions
+- [x] H2.2 — Подсветка @упоминаний синим цветом
+- [x] H2.3 — Кликабельные @упоминания → профиль
 - [x] H2.4 — Уведомление упомянутому пользователю
 
+### ЭТАП I — TELEGRAM BOT ✅ ЗАВЕРШЁН (код)
+
+- [x] I1.1 — Бот создан через BotFather
+- [x] I1.2 — Таблица `telegram_users`
+- [x] I1.3 — Генерация кода в профиле
+- [x] I2.1 — Edge Function для Telegram уведомлений
+- [x] I2.2 — Привязка/отвязка в Profile.tsx
+- [ ] I2.3 — **Деплой Telegram Edge Function в Supabase** ❌
+- [ ] I2.4 — **Настроить TELEGRAM_BOT_TOKEN в Supabase secrets** ❌
+
+### ЭТАП J — UI АРХИТЕКТУРА (НОВЫЙ)
+
+- [x] J1 — shadcn/ui инициализирован (`components.json`)
+- [x] J2 — Button компонент (base-ui/react)
+- [x] J3 — Input компонент
+- [x] J4 — Textarea компонент
+- [x] J5 — Label компонент
+- [x] J6 — Dialog компонент (VillageMeetings, MicroYardym)
+- [x] J7 — Skeleton компонент
+- [x] J8 — framer-motion/motion анимации в навигации
+- [x] J9 — CSS переменные для warm палитры
+- [ ] J10 — Перевести модалки Profile.tsx на shadcn Dialog ❌
+- [ ] J11 — Перевести EthnoCalendar модалку на shadcn Dialog ❌
+- [ ] J12 — Select компонент для форм (заменить нативный `<select>`) ❌
+- [ ] J13 **Обновить шаблон письма Magic Link на русском** — 5 минут в Supabase Dashboard
+
 ---
 
-### ЭТАП I — TELEGRAM BOT ИНТЕГРАЦИЯ (ЭТАП 16)
-> Цель: дублирование уведомлений в Telegram и быстрые ответы
+## БЛОК 4 — ОТКРЫТЫЕ ЗАДАЧИ (приоритет)
 
-**I1. База и связка** ✅
-- [x] I1.1 — Создать бота через BotFather
-- [x] I1.2 — Таблица `telegram_users(user_id, telegram_id, chat_id)`
-- [x] I1.3 — Генерация одноразового кода/ссылки для привязки в профиле
+### 🔴 Критические (блокируют функции)
 
-**I2. Функционал** ✅
-- [x] I2.1 — Дублирование всех `user_notifications` в Telegram
-- [x] I2.2 — Возможность ответить на комментарий прямо из Telegram (через Edge Function)
-- [x] I2.3 — Ежедневная сводка намазов и событий в боте (план)
+| # | Задача | Файл/место | Эффект |
+|---|--------|-----------|--------|
+| P1 | Данные намазов май–декабрь 2026 | `prayer_times` в Supabase | Без данных fallback кончится 30 апреля |
+| P2 | Деплой Edge Function `send-push` | Supabase Functions + secrets | Push уведомления не работают |
+| P3 | Деплой Edge Function `telegram-bot` + secrets | Supabase Functions | Telegram уведомления не работают |
 
----
+### 🟡 Средние (ухудшают UX)
 
+| # | Задача | Трудоёмкость |
+|---|--------|-------------|
+| P4 | React.memo + useMemo в MicroYardym | 30 мин |
+| P5 | Lazy loading страниц через React.lazy | 2 ч |
+| P6 | Lighthouse PWA аудит | 1 ч |
+| P7 | Настроить цели в Яндекс.Метрике | 1 ч |
+| P8 | Перенести Profile.tsx модалки на shadcn Dialog | 2 ч |
 
-| Задача | Из версии | Статус |
-|--------|-----------|--------|
-| Язык сохранять в профиле БД | v2, v3 | ✅ реализовано |
-| Автор закрывает своё обращение | v2 | ✅ реализовано |
-| Редактирование обрядов и шагов в Админ | v2 | ✅ реализовано |
-| Push-уведомления | v2, v3 | ⚠️ частично |
-| Намазы 2027 | v2, v3 | ❌ не реализовано |
-| Редактирование встречи организатором `/meetings/:id/edit` | v2 | ✅ реализовано |
-| Настройка RLS для профилей (set_user_role) | v3 Этап 9 | ✅ реализовано |
-| Безопасные RPC-функции | v3 Этап 9 | ✅ реализовано |
-| Проверка политик RLS (аудит) | v3 Этап 9 | ✅ реализовано |
+### 🟢 Низкие (косметика/качество)
+
+| # | Задача | Трудоёмкость |
+|---|--------|-------------|
+| P9 | Select shadcn компонент в формах | 1 ч |
+| P10 | Sentry интеграция | 2 ч |
+| P11 | supabase inspect db lint | 30 мин |
+| P12 | Проверить standalone iOS Safari | 30 мин |
 
 ---
 
 ## БЛОК 5 — МАТРИЦА ПРИОРИТЕТОВ
 
-| Этап | Трудоёмкость | Важность | Делать когда |
-|------|-------------|----------|--------------|
-| A — Стабилизация | Средняя | 🔴 Критическая | Сейчас |
-| B — Triggers | Средняя | 🔴 Высокая | После A |
-| C — Supabase настройка | Низкая | 🔴 Высокая | Параллельно с A |
-| D1 — Намазы 2027 | Низкая | 🟡 Средняя | После A |
-| D2 — Язык в профиле | Низкая | 🟡 Средняя | После B |
-| D3 — Push полный | Высокая | 🟡 Средняя | После B |
-| D4 — Полный i18n | Высокая | 🟡 Средняя | ⚠️ Частично (MicroYardym) |
-| D5 — Offline PWA | Средняя | 🟢 Низкая | После D |
-| D6 — Шаги обрядов | Низкая | 🟢 Низкая | ✅ Выполнено |
-| E — UX полировка | Средняя | 🟢 Низкая | Итерационно |
-| F — Безопасность | Средняя | 🟡 Средняя | После A+B |
-| G — Аналитика | Низкая | 🟢 Низкая | В любой момент |
+| Этап | Трудоёмкость | Важность | Статус |
+|------|-------------|----------|--------|
+| A — Стабилизация | Средняя | 🔴 Критическая | ✅ Завершён |
+| B — Triggers | Средняя | 🔴 Высокая | ✅ Завершён |
+| C — Supabase настройка | Низкая | 🔴 Высокая | ✅ Завершён |
+| D1 — Намазы май–декабрь | Низкая | 🔴 Критическая | ❌ Срочно |
+| D3 — Push deploy | Средняя | 🟡 Средняя | ❌ Срочно |
+| D4 — Полный i18n | Высокая | 🟡 Средняя | ⚠️ ~90% |
+| E — UX полировка | Средняя | 🟡 Средняя | ✅ Завершён |
+| F2 — Производительность | Средняя | 🟡 Средняя | ⚠️ Частично |
+| G — Аналитика | Низкая | 🟢 Низкая | ⚠️ Частично |
+| H — Обсуждения | Высокая | 🟡 Средняя | ✅ Завершён |
+| I — Telegram | Высокая | 🟡 Средняя | ⚠️ Код готов |
+| J — UI Архитектура | Средняя | 🟢 Низкая | ⚠️ ~70% |
 
 ---
 
-## БЛОК 6 — БЫСТРЫЕ ПОБЕДЫ (до 30 минут каждая)
-
-1. ~~**Создать `.env.example`**~~ ✅ Выполнено
-2. ~~**Исправить `meeting_time` null**~~ ✅ Выполнено
-3. ~~**Создать `set_user_role` SQL**~~ ✅ Выполнено (создан файл миграции)
-4. ~~**Убрать `ssr:true` из Метрики**~~ ✅ Выполнено
-5. ~~**Добавить `apple-touch-icon`**~~ ✅ Выполнено
-6. ~~**Добавить `try/catch` в Admin fetcher**~~ ✅ Выполнено
-7. **Обновить шаблон письма Magic Link на русском** — 5 минут в Supabase Dashboard
+*Документ обновлён: 11 апреля 2026. Следующее обновление — после деплоя Push/Telegram Edge Functions и загрузки намазов.*
 
 ---
 
