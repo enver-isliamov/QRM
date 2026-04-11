@@ -6,11 +6,18 @@ const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string
 export const supabase = createClient(
   SUPABASE_URL || 'https://placeholder.supabase.co',
   SUPABASE_ANON_KEY || 'placeholder',
-  { auth: { autoRefreshToken: true, persistSession: true, detectSessionInUrl: true } }
+  { 
+    auth: { autoRefreshToken: true, persistSession: true, detectSessionInUrl: true },
+    realtime: {
+      params: {
+        eventsPerSecond: 10
+      }
+    }
+  }
 )
 
 export type Profile = {
-  id: string; name: string; avatar_url?: string | null
+  id: string; name: string; username?: string | null; avatar_url?: string | null
   role: 'user' | 'moderator' | 'admin'; provider: string
   language?: 'ru' | 'crh'; phone?: string | null
   bio?: string | null; village?: string | null
@@ -43,8 +50,8 @@ export type RitualStepRow = {
 
 export type HelpRequestCommentRow = {
   id: string; request_id: string; author_id: string
-  content: string; created_at: string
-  author?: { name: string; avatar_url: string | null; role: string }
+  parent_id?: string | null; content: string; created_at: string
+  author?: { name: string; avatar_url: string | null; role: string; username?: string | null }
 }
 
 export type HelpRequestRow = {
@@ -71,6 +78,12 @@ export type AuditLogRow = {
   target_type: string; target_id: string; details?: any
   created_at: string
   admin?: { name: string; email: string }
+}
+
+export type MeetingCommentRow = {
+  id: string; meeting_id: string; author_id: string
+  parent_id?: string | null; content: string; created_at: string
+  author?: { name: string; avatar_url: string | null; role: string; username?: string | null }
 }
 
 export type MeetingRow = {

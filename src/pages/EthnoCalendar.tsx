@@ -1,17 +1,24 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, Info } from 'lucide-react';
 import {
   format, startOfMonth, endOfMonth, eachDayOfInterval,
   isSameMonth, isSameDay, addMonths, subMonths, getDay,
 } from 'date-fns';
 import { ru } from 'date-fns/locale';
+const crh = ru; // date-fns doesn't have crh locale, using ru as fallback
 import { useEthnoEvents } from '../hooks/useEthnoEvents';
 import { EthnoEventRow } from '../lib/supabase';
+import SectionTabs from '../components/SectionTabs';
 
 function EthnoCalendar() {
+  const { t, i18n } = useTranslation();
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedEvent, setSelectedEvent] = useState<EthnoEventRow | null>(null);
   const { events, loading, upcoming } = useEthnoEvents();
+
+  const currentLocale = i18n.language === 'crh' ? crh : ru;
+  const isCrh = i18n.language === 'crh';
 
   const monthStart = startOfMonth(currentMonth);
   const days = eachDayOfInterval({ start: monthStart, end: endOfMonth(monthStart) });
@@ -24,16 +31,16 @@ function EthnoCalendar() {
     return events.filter(e => e.event_date === ds);
   };
 
-  const weekDays = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+  const weekDays = [
+    t('calendar.mon'), t('calendar.tue'), t('calendar.wed'),
+    t('calendar.thu'), t('calendar.fri'), t('calendar.sat'), t('calendar.sun')
+  ];
 
   return (
     <div className="animate-fade-in min-h-screen bg-gray-50">
-      <div className="bg-white px-4 py-4 border-b border-gray-200">
-        <h1 className="text-xl font-bold text-gray-800">Этно-календарь</h1>
-        <p className="text-sm text-gray-500">Крымскотатарские праздники и памятные даты</p>
-      </div>
+      <SectionTabs />
 
-      <div className="bg-white px-4 py-3 border-b border-gray-200">
+      <div className="bg-white px-4 py-3 border-b border-gray-200 mt-4">
         <div className="flex items-center justify-between">
           <button onClick={() => setCurrentMonth(m => subMonths(m, 1))} className="p-2 hover:bg-gray-100 rounded-lg touch-feedback">
             <ChevronLeft className="w-5 h-5 text-gray-600" />
@@ -41,7 +48,7 @@ function EthnoCalendar() {
           <div className="flex items-center gap-2">
             <CalendarIcon className="w-5 h-5 text-emerald-600" />
             <span className="font-semibold text-gray-800 capitalize">
-              {format(currentMonth, 'MMMM yyyy', { locale: ru })}
+              {format(currentMonth, 'MMMM yyyy', { locale: currentLocale })}
             </span>
           </div>
           <button onClick={() => setCurrentMonth(m => addMonths(m, 1))} className="p-2 hover:bg-gray-100 rounded-lg touch-feedback">
@@ -97,16 +104,26 @@ function EthnoCalendar() {
         </div>
 
         <div className="flex items-center justify-center gap-4 mt-4 text-xs">
-          <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-emerald-500" /><span className="text-gray-600">Праздник</span></div>
-          <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-rose-500" /><span className="text-gray-600">Памятная дата</span></div>
-          <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-amber-500" /><span className="text-gray-600">Другое</span></div>
+          <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-emerald-500" /><span className="text-gray-600">{t('calendar.holiday')}</span></div>
+          <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-rose-500" /><span className="text-gray-600">{t('calendar.memorial')}</span></div>
+          <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-amber-500" /><span className="text-gray-600">{t('calendar.other')}</span></div>
         </div>
       </div>
 
       <div className="px-4 pb-20">
-        <h2 className="text-lg font-bold text-gray-800 mb-3">Ближайшие события</h2>
+        <h2 className="text-lg font-bold text-gray-800 mb-3">{t('calendar.upcoming')}</h2>
         {loading ? (
           <div className="space-y-3">{[...Array(3)].map((_, i) => <div key={i} className="h-20 bg-white rounded-xl animate-pulse border border-gray-100" />)}</div>
+        ) : upcoming(5).length === 0 ? (
+          <div className="bg-white border border-dashed border-gray-200 rounded-xl p-12 text-center">
+            <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4">
+              <CalendarIcon className="w-8 h-8 text-gray-300" />
+            </div>
+            <p className="text-gray-800 font-semibold text-lg">{t('calendar.no_upcoming')}</p>
+            <p className="text-gray-500 mt-2 max-w-[240px] mx-auto">
+              {t('calendar.no_upcoming_desc')}
+            </p>
+          </div>
         ) : (
           <div className="space-y-3">
             {upcoming(5).map(event => {
@@ -121,17 +138,17 @@ function EthnoCalendar() {
                     <div className="flex-shrink-0 text-center bg-emerald-50 rounded-lg p-2 min-w-[60px]">
                       <div className="text-2xl font-bold text-emerald-600">{d.getDate()}</div>
                       <div className="text-xs text-emerald-600 font-medium uppercase">
-                        {format(d, 'MMM', { locale: ru })}
+                        {format(d, 'MMM', { locale: currentLocale })}
                       </div>
                     </div>
                     <div className="flex-1">
-                      <h3 className="font-semibold text-gray-800">{event.title}</h3>
-                      <p className="text-sm text-gray-500 mt-1 line-clamp-2">{event.description}</p>
+                      <h3 className="font-semibold text-gray-800">{isCrh && event.title_crh ? event.title_crh : event.title}</h3>
+                      <p className="text-sm text-gray-500 mt-1 line-clamp-2">{isCrh && event.description_crh ? event.description_crh : event.description}</p>
                       <span className={`inline-block mt-2 text-xs px-2 py-0.5 rounded ${
                         event.type === 'holiday' ? 'bg-emerald-100 text-emerald-700' :
                         event.type === 'memorial' ? 'bg-rose-100 text-rose-700' : 'bg-amber-100 text-amber-700'
                       }`}>
-                        {event.type === 'holiday' ? 'Праздник' : event.type === 'memorial' ? 'Памятная дата' : 'Другое'}
+                        {event.type === 'holiday' ? t('calendar.holiday') : event.type === 'memorial' ? t('calendar.memorial') : t('calendar.other')}
                       </span>
                     </div>
                   </div>
@@ -149,37 +166,47 @@ function EthnoCalendar() {
               <div className="flex-shrink-0 text-center bg-emerald-50 rounded-xl p-3">
                 <div className="text-3xl font-bold text-emerald-600">{new Date(selectedEvent.event_date).getDate()}</div>
                 <div className="text-sm text-emerald-600 font-medium uppercase">
-                  {format(new Date(selectedEvent.event_date), 'MMM', { locale: ru })}
+                  {format(new Date(selectedEvent.event_date), 'MMM', { locale: currentLocale })}
                 </div>
               </div>
               <div className="flex-1">
-                <h2 className="text-xl font-bold text-gray-800">{selectedEvent.title}</h2>
-                {selectedEvent.title_crh && <p className="text-sm text-gray-500 mt-1">{selectedEvent.title_crh}</p>}
+                <h2 className="text-xl font-bold text-gray-800">{isCrh && selectedEvent.title_crh ? selectedEvent.title_crh : selectedEvent.title}</h2>
+                {isCrh && selectedEvent.title_crh ? (
+                  <p className="text-sm text-gray-500 mt-1">{selectedEvent.title}</p>
+                ) : (
+                  selectedEvent.title_crh && <p className="text-sm text-gray-500 mt-1">{selectedEvent.title_crh}</p>
+                )}
               </div>
             </div>
             <div className="space-y-4">
-              {selectedEvent.description && (
+              {(isCrh && selectedEvent.description_crh ? selectedEvent.description_crh : selectedEvent.description) && (
                 <div>
-                  <h3 className="font-semibold text-gray-700 mb-1">Описание</h3>
-                  <p className="text-gray-600">{selectedEvent.description}</p>
+                  <h3 className="font-semibold text-gray-700 mb-1">{t('calendar.description')}</h3>
+                  <p className="text-gray-600">{isCrh && selectedEvent.description_crh ? selectedEvent.description_crh : selectedEvent.description}</p>
                 </div>
               )}
-              {selectedEvent.description_crh && (
+              {!isCrh && selectedEvent.description_crh && (
                 <div>
-                  <h3 className="font-semibold text-gray-700 mb-1">Крымскотатарский</h3>
+                  <h3 className="font-semibold text-gray-700 mb-1">{t('calendar.crh_desc')}</h3>
                   <p className="text-gray-600 italic">{selectedEvent.description_crh}</p>
+                </div>
+              )}
+              {isCrh && selectedEvent.description && (
+                <div>
+                  <h3 className="font-semibold text-gray-700 mb-1">Rusça</h3>
+                  <p className="text-gray-600 italic">{selectedEvent.description}</p>
                 </div>
               )}
               <div className="flex items-center gap-2">
                 <Info className="w-4 h-4 text-emerald-600" />
                 <span className="text-sm text-gray-500">
-                  {format(new Date(selectedEvent.event_date), 'd MMMM yyyy', { locale: ru })}
+                  {format(new Date(selectedEvent.event_date), 'd MMMM yyyy', { locale: currentLocale })}
                 </span>
               </div>
             </div>
             <button onClick={() => setSelectedEvent(null)}
               className="w-full mt-6 bg-emerald-500 text-white font-semibold py-3 rounded-xl hover:bg-emerald-600 transition-colors">
-              Закрыть
+              {t('common.close')}
             </button>
           </div>
         </div>

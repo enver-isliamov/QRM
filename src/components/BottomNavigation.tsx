@@ -13,8 +13,8 @@ export default function BottomNavigation() {
     { path: '/',               label: t('nav.home'),  icon: Home,     show: true },
     { path: '/prayer-times',   label: t('nav.namaz'),   icon: Clock,    show: true },
     { path: '/micro-yardym',   label: t('nav.yardym'),    icon: Heart,    show: featureToggles.yardym },
-    { path: '/village-meetings', label: 'Встречи', icon: MapPin,   show: featureToggles.meetings },
-    { path: '/sections',       label: 'Разделы',  icon: Grid3X3,  show: true },
+    { path: '/village-meetings', label: t('home.village_meetings'), icon: MapPin,   show: featureToggles.meetings },
+    { path: '/sections',       label: t('nav.sections'),  icon: Grid3X3,  show: true },
   ]
 
   const isActive = (path: string) => {

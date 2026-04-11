@@ -1,49 +1,42 @@
-import { useState, useEffect } from 'react'
+import useSWR, { mutate } from 'swr'
 import { supabase, MeetingRow } from '../lib/supabase'
+import { toast } from 'sonner'
 
 export function useMeetings(userId?: string | null) {
-  const [meetings, setMeetings] = useState<MeetingRow[]>([])
-  const [attending, setAttending] = useState<Set<string>>(new Set())
-  const [subscribed, setSubscribed] = useState<Set<string>>(new Set())
-  const [loading, setLoading] = useState(true)
-
-  const fetchMeetings = async () => {
-    const { data } = await supabase
+  const { data: meetings = [], isLoading: loading } = useSWR('meetings', async () => {
+    // Используем VIEW meetings_with_stats для получения вычисляемых полей
+    const { data, error } = await supabase
       .from('meetings_with_stats').select('*').eq('status', 'upcoming')
       .order('meeting_date', { ascending: true })
-    if (data) setMeetings(data as MeetingRow[])
-    setLoading(false)
-  }
+    if (data) console.log('DEBUG: useMeetings - data from view:', data.map(m => ({ id: m.id, village: m.village, url: m.fund_cloudtips_url })));
+    if (error) throw error
+    return data as MeetingRow[]
+  })
 
-  const fetchUserData = async (uid: string) => {
+  const { data: userData } = useSWR(userId ? `user_meetings_${userId}` : null, async () => {
     const [att, sub] = await Promise.all([
-      supabase.from('meeting_attendees').select('meeting_id').eq('user_id', uid),
-      supabase.from('meeting_subscriptions').select('meeting_id').eq('user_id', uid),
+      supabase.from('meeting_attendees').select('meeting_id').eq('user_id', userId!),
+      supabase.from('meeting_subscriptions').select('meeting_id').eq('user_id', userId!),
     ])
-    if (att.data) setAttending(new Set(att.data.map(r => r.meeting_id)))
-    if (sub.data) setSubscribed(new Set(sub.data.map(r => r.meeting_id)))
-  }
+    return {
+      attending: new Set(att.data?.map(r => r.meeting_id) || []),
+      subscribed: new Set(sub.data?.map(r => r.meeting_id) || [])
+    }
+  })
 
-  useEffect(() => {
-    fetchMeetings()
-    if (userId) fetchUserData(userId)
-    else { setAttending(new Set()); setSubscribed(new Set()) }
-  }, [userId])
+  const attending = userData?.attending || new Set<string>()
+  const subscribed = userData?.subscribed || new Set<string>()
 
   const toggleAttend = async (meetingId: string) => {
     if (!userId) return false
     const going = attending.has(meetingId)
     if (going) {
       await supabase.from('meeting_attendees').delete().eq('meeting_id', meetingId).eq('user_id', userId)
-      setAttending(prev => { const s = new Set(prev); s.delete(meetingId); return s })
-      setMeetings(prev => prev.map(m => m.id === meetingId ? { ...m, attendees_count: Math.max(0, (m.attendees_count ?? 1) - 1) } : m))
     } else {
-      const { error } = await supabase.from('meeting_attendees').insert({ meeting_id: meetingId, user_id: userId })
-      if (!error) {
-        setAttending(prev => new Set([...prev, meetingId]))
-        setMeetings(prev => prev.map(m => m.id === meetingId ? { ...m, attendees_count: (m.attendees_count ?? 0) + 1 } : m))
-      }
+      await supabase.from('meeting_attendees').insert({ meeting_id: meetingId, user_id: userId })
     }
+    mutate('meetings')
+    mutate(`user_meetings_${userId}`)
     return true
   }
 
@@ -52,26 +45,45 @@ export function useMeetings(userId?: string | null) {
     const isSub = subscribed.has(meetingId)
     if (isSub) {
       await supabase.from('meeting_subscriptions').delete().eq('meeting_id', meetingId).eq('user_id', userId)
-      setSubscribed(prev => { const s = new Set(prev); s.delete(meetingId); return s })
     } else {
-      const { error } = await supabase.from('meeting_subscriptions').insert({ meeting_id: meetingId, user_id: userId })
-      if (!error) setSubscribed(prev => new Set([...prev, meetingId]))
+      await supabase.from('meeting_subscriptions').insert({ meeting_id: meetingId, user_id: userId })
     }
+    mutate(`user_meetings_${userId}`)
     return true
   }
 
   const addMeeting = async (data: Partial<MeetingRow>, authorId: string) => {
+    console.log('Supabase: Adding meeting with data:', data);
     const { data: inserted, error } = await supabase
       .from('meetings').insert({ ...data, author_id: authorId }).select().single()
-    if (inserted && !error) await fetchMeetings()
+    if (error) console.error('Supabase: Add meeting error:', error);
+    if (inserted && !error) mutate('meetings')
     return { data: inserted, error }
   }
 
   const updateMeeting = async (id: string, updates: Partial<MeetingRow>) => {
     const meeting = meetings.find(m => m.id === id)
-    const { error } = await supabase.from('meetings').update(updates).eq('id', id)
-    if (!error) {
-      await fetchMeetings()
+    
+    // Очищаем данные от undefined и системных полей, которые нельзя обновлять
+    const cleanUpdates: any = {};
+    Object.entries(updates).forEach(([key, value]) => {
+      if (value !== undefined && !['attendees_count', 'subscribers_count', 'fund_progress', 'created_at', 'author'].includes(key)) {
+        cleanUpdates[key] = value;
+      }
+    });
+
+    console.log('Supabase: Updating meeting', id, 'with data:', cleanUpdates);
+    const { data, error } = await supabase.from('meetings').update(cleanUpdates).eq('id', id).select()
+    
+    console.log('Supabase Response:', { data, error });
+    
+    if (error) {
+      console.error('Supabase: Update meeting error:', error);
+      toast.error('Ошибка сохранения: ' + error.message);
+    } else {
+      toast.success('Данные успешно сохранены в базе');
+      mutate('meetings')
+      mutate(`meeting_${id}`) // Обновляем кэш конкретной встречи
       
       const { data: subs } = await supabase.from('meeting_subscriptions').select('user_id').eq('meeting_id', id)
       if (subs && subs.length > 0) {
@@ -101,28 +113,28 @@ export function useMeetings(userId?: string | null) {
     meetings, loading, toggleAttend, toggleSubscribe, addMeeting, updateMeeting,
     isGoing: (id: string) => attending.has(id),
     isSubscribed: (id: string) => subscribed.has(id),
-    refresh: fetchMeetings,
+    refresh: () => mutate('meetings'),
   }
 }
 
 export function useMeetingDetail(id: string | undefined) {
-  const [meeting, setMeeting] = useState<MeetingRow | null>(null)
-  const [participants, setParticipants] = useState<{ id: string; name: string; avatar_url?: string }[]>([])
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    if (!id) return
-    Promise.all([
-      supabase.from('meetings_with_stats').select('*').eq('id', id).single(),
+  const { data, isLoading: loading } = useSWR(id ? `meeting_${id}` : null, async () => {
+    const [mRes, pRes] = await Promise.all([
+      supabase.from('meetings_with_stats').select('*').eq('id', id!).single(),
       supabase.from('meeting_attendees')
         .select('user_id, profiles(id, name, avatar_url)')
-        .eq('meeting_id', id).limit(20),
-    ]).then(([mRes, pRes]) => {
-      if (mRes.data) setMeeting(mRes.data as MeetingRow)
-      if (pRes.data) setParticipants(pRes.data.map((r: any) => r.profiles).filter(Boolean))
-      setLoading(false)
-    })
-  }, [id])
+        .eq('meeting_id', id!).limit(20),
+    ])
+    return {
+      meeting: mRes.data as MeetingRow,
+      participants: pRes.data?.map((r: any) => r.profiles).filter(Boolean) || []
+    }
+  })
 
-  return { meeting, participants, loading }
+  return { 
+    meeting: data?.meeting || null, 
+    participants: data?.participants || [], 
+    loading,
+    refresh: () => mutate(`meeting_${id}`)
+  }
 }

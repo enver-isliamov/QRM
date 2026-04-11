@@ -158,34 +158,7 @@ export default defineConfig({
 })
 ```
 
-## Деплой на Netlify (Бесплатно)
 
-### Вариант 1: Через Git
-
-1. Зарегистрируйтесь на [Netlify](https://www.netlify.com/)
-2. Нажмите "Add new site" → "Import an existing project"
-3. Выберите GitHub и авторизуйтесь
-4. Выберите ваш репозиторий
-5. Настройки сборки:
-   - Build command: `npm run build`
-   - Publish directory: `dist`
-6. Нажмите "Deploy site"
-
-### Вариант 2: Через CLI
-
-```bash
-# Установите Netlify CLI
-npm install -g netlify-cli
-
-# Войдите в аккаунт
-netlify login
-
-# Инициализируйте проект
-netlify init
-
-# Задеплойте
-netlify deploy --prod
-```
 
 ## Деплой на Vercel (Бесплатно)
 
@@ -214,90 +187,7 @@ netlify deploy --prod
 3. Прокрутите вниз и выберите "На экран 'Домой'"
 4. Нажмите "Добавить"
 
-## Структура проекта
 
-```
-oraza-pwa/
-├── public/              # Статические файлы
-│   ├── manifest.json    # PWA манифест
-│   ├── sw.js           # Service Worker
-│   └── icon-*.png      # Иконки приложения
-├── src/
-│   ├── components/      # React компоненты
-│   │   ├── Layout.tsx
-│   │   ├── Header.tsx
-│   │   └── BottomNavigation.tsx
-│   ├── pages/          # Страницы приложения
-│   │   ├── Home.tsx
-│   │   ├── PrayerTimes.tsx
-│   │   ├── EthnoCalendar.tsx
-│   │   ├── Rituals.tsx
-│   │   ├── MicroYardym.tsx
-│   │   ├── VillageMeetings.tsx
-│   │   ├── Profile.tsx
-│   │   ├── Login.tsx
-│   │   ├── Admin.tsx
-│   │   └── Support.tsx
-│   ├── data/           # Данные приложения
-│   │   ├── prayerTimes.ts
-│   │   ├── ethnoCalendar.ts
-│   │   └── rituals.ts
-│   ├── store/          # State management
-│   │   └── useStore.ts
-│   ├── types/          # TypeScript типы
-│   │   └── index.ts
-│   ├── App.tsx         # Главный компонент
-│   ├── main.tsx        # Точка входа
-│   └── index.css       # Стили
-├── index.html
-├── vite.config.ts
-├── tailwind.config.js
-├── tsconfig.json
-└── package.json
-```
-
-## Настройка данных
-
-### Расписание намазов
-
-Редактируйте файл `src/data/prayerTimes.ts`:
-
-```typescript
-export const prayerTimes2026: Record<string, DailyPrayers> = {
-  '2026-03-21': { 
-    date: '2026-03-21', 
-    fajr: '05:17', 
-    sunrise: '06:34', 
-    dhuhr: '12:55', 
-    asr: '16:15', 
-    maghrib: '19:06', 
-    isha: '20:23' 
-  },
-  // ... добавьте другие даты
-};
-```
-
-### Этно-календарь
-
-Редактируйте файл `src/data/ethnoCalendar.ts`:
-
-```typescript
-export const ethnoEvents: EthnoEvent[] = [
-  {
-    id: '1',
-    date: '2026-05-18',
-    day: 18,
-    month: 'МАЙ',
-    monthCrh: 'МАЙЫС',
-    title: 'День памяти жертв депортации',
-    titleCrh: 'Сюргунлик къурбанларыны хатырлау куню',
-    description: '...',
-    descriptionCrh: '...',
-    type: 'memorial'
-  },
-  // ... добавьте другие события
-];
-```
 
 ## Монетизация
 
@@ -320,7 +210,7 @@ const supportLink = 'https://pay.cloudtips.ru/p/8a27e9ab';
 MIT License - свободное использование и модификация.
 
 ## Контакты
-
+Telegram @EnrikeTomas
 По вопросам и предложениям: support@oraza.ru
 
 ---

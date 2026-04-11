@@ -1,8 +1,8 @@
-import { Component, ReactNode, ErrorInfo } from 'react'
-import { AlertTriangle, RefreshCcw } from 'lucide-react';
+import { Component, ErrorInfo, ReactNode } from 'react';
+import { AlertCircle, RefreshCw, Home } from 'lucide-react';
 
 interface Props {
-  children?: ReactNode;
+  children: ReactNode;
 }
 
 interface State {
@@ -24,30 +24,65 @@ export class ErrorBoundary extends Component<Props, State> {
     console.error('Uncaught error:', error, errorInfo);
   }
 
+  private handleReset = () => {
+    this.setState({ hasError: false, error: null });
+    window.location.reload();
+  };
+
+  private handleGoHome = () => {
+    this.setState({ hasError: false, error: null });
+    window.location.href = '/';
+  };
+
   public render() {
     if (this.state.hasError) {
+      let errorMessage = 'Произошла непредвиденная ошибка. Мы уже работаем над её исправлением.';
+      
+      try {
+        if (this.state.error?.message) {
+          const parsed = JSON.parse(this.state.error.message);
+          if (parsed.error && parsed.operationType) {
+            errorMessage = `Ошибка при выполнении операции "${parsed.operationType}" в ${parsed.path || 'базе данных'}.`;
+          }
+        }
+      } catch {
+        // Not a JSON error, use default or raw message
+        if (this.state.error?.message && this.state.error.message.length < 100) {
+          errorMessage = this.state.error.message;
+        }
+      }
+
       return (
-        <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4">
-          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 max-w-md w-full text-center">
-            <div className="w-16 h-16 bg-rose-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <AlertTriangle className="w-8 h-8 text-rose-600" />
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-8 max-w-md w-full text-center">
+            <div className="w-16 h-16 bg-rose-100 rounded-full flex items-center justify-center mx-auto mb-6">
+              <AlertCircle className="w-8 h-8 text-rose-600" />
             </div>
-            <h1 className="text-xl font-bold text-gray-800 mb-2">Что-то пошло не так</h1>
-            <p className="text-gray-500 mb-6 text-sm">
-              Произошла непредвиденная ошибка. Мы уже знаем о ней и работаем над исправлением.
-            </p>
-            <div className="bg-gray-50 rounded-xl p-3 mb-6 text-left overflow-auto max-h-32">
-              <code className="text-xs text-rose-600 break-words">
-                {this.state.error?.message || 'Неизвестная ошибка'}
-              </code>
+            <h1 className="text-2xl font-bold text-gray-800 mb-2">Упс! Что-то пошло не так</h1>
+            <p className="text-gray-600 mb-8">{errorMessage}</p>
+            
+            <div className="space-y-3">
+              <button
+                onClick={this.handleReset}
+                className="w-full bg-emerald-500 text-white py-3 rounded-xl font-medium flex items-center justify-center gap-2 hover:bg-emerald-600 transition-colors"
+              >
+                <RefreshCw className="w-5 h-5" />
+                Попробовать снова
+              </button>
+              <button
+                onClick={this.handleGoHome}
+                className="w-full bg-gray-100 text-gray-700 py-3 rounded-xl font-medium flex items-center justify-center gap-2 hover:bg-gray-200 transition-colors"
+              >
+                <Home className="w-5 h-5" />
+                На главную
+              </button>
             </div>
-            <button
-              onClick={() => window.location.reload()}
-              className="w-full bg-emerald-500 text-white rounded-xl py-3 font-medium flex items-center justify-center gap-2 hover:bg-emerald-600 transition-colors"
-            >
-              <RefreshCcw className="w-5 h-5" />
-              Перезагрузить страницу
-            </button>
+            
+            <div className="mt-8 pt-6 border-t border-gray-100">
+              <p className="text-xs text-gray-400">
+                Если ошибка повторяется, пожалуйста, свяжитесь с поддержкой.
+              </p>
+            </div>
           </div>
         </div>
       );
@@ -56,3 +91,5 @@ export class ErrorBoundary extends Component<Props, State> {
     return this.props.children;
   }
 }
+
+export default ErrorBoundary;

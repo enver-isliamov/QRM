@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { usePrayerTimesForDate } from './usePrayerTimes';
-import { prayerNames } from '../data/prayerTimes';
+import { prayerNames } from '../store/data/prayerTimes';
 
 export function useNextPrayer() {
   const [now, setNow] = useState(new Date());

@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { ChevronLeft, Save, Trash2 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
+import { toast } from 'sonner'
 
 export default function MeetingEdit() {
   const { id } = useParams<{ id: string }>()
@@ -10,7 +11,6 @@ export default function MeetingEdit() {
   const { profile } = useAuth()
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [toast, setToast] = useState('')
 
   const [form, setForm] = useState({
     village: '', organizer: '', organizer_phone: '', organizer_email: '',
@@ -44,8 +44,6 @@ export default function MeetingEdit() {
     })
   }, [id])
 
-  const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(''), 2500) }
-
   const handleSave = async () => {
     if (!id || !form.village || !form.meeting_date) return
     setSaving(true)
@@ -66,8 +64,8 @@ export default function MeetingEdit() {
       status: form.status,
     }).eq('id', id)
     setSaving(false)
-    if (!error) { showToast('Сохранено ✓'); setTimeout(() => navigate(`/meetings/${id}`), 1000) }
-    else showToast('Ошибка сохранения')
+    if (!error) { toast.success('Сохранено'); setTimeout(() => navigate(`/meetings/${id}`), 1000) }
+    else toast.error('Ошибка сохранения')
   }
 
   const handleDelete = async () => {
@@ -153,12 +151,6 @@ export default function MeetingEdit() {
           </button>
         )}
       </div>
-
-      {toast && (
-        <div className="fixed bottom-20 left-1/2 -translate-x-1/2 bg-gray-800 text-white px-4 py-2 rounded-full text-sm z-[100] shadow-lg">
-          {toast}
-        </div>
-      )}
     </div>
   )
 }

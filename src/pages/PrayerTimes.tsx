@@ -1,16 +1,22 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ChevronLeft, ChevronRight, Check, Clock, Sun, Sunrise, Sunset, Moon } from 'lucide-react';
 import { format, addDays, subDays } from 'date-fns';
 import { ru } from 'date-fns/locale';
+const crh = ru; // date-fns doesn't have crh locale, using ru as fallback
 import { usePrayerTimesForDate, usePrayerCompletions } from '../hooks/usePrayerTimes';
 import { useAuth } from '../hooks/useAuth';
-import { prayerNames } from '../data/prayerTimes';
+import { prayerNames } from '../store/data/prayerTimes';
 
 function PrayerTimes() {
+  const { t, i18n } = useTranslation();
   const [selectedDate, setSelectedDate] = useState(new Date());
   const { user } = useAuth();
   const { prayers, loading } = usePrayerTimesForDate(selectedDate);
   const { completed, toggle } = usePrayerCompletions(user?.id ?? null, selectedDate);
+
+  const currentLocale = i18n.language === 'crh' ? crh : ru;
+  const isCrh = i18n.language === 'crh';
 
   const navigateDate = (dir: 'prev' | 'next') =>
     setSelectedDate(prev => dir === 'prev' ? subDays(prev, 1) : addDays(prev, 1));
@@ -31,21 +37,16 @@ function PrayerTimes() {
 
   return (
     <div className="animate-fade-in min-h-screen bg-gray-50">
-      <div className="bg-white px-4 py-4 border-b border-gray-200">
-        <h1 className="text-xl font-bold text-gray-800">Расписание намазов</h1>
-        <p className="text-sm text-gray-500">Симферополь, Крым</p>
-      </div>
-
       <div className="bg-white px-4 py-3 border-b border-gray-200">
         <div className="flex items-center justify-between">
           <button onClick={() => navigateDate('prev')} className="p-2 hover:bg-gray-100 rounded-lg touch-feedback">
             <ChevronLeft className="w-5 h-5 text-gray-600" />
           </button>
           <div className="text-center">
-            <div className="font-semibold text-gray-800">{format(selectedDate, 'd MMMM yyyy', { locale: ru })}</div>
+            <div className="font-semibold text-gray-800">{format(selectedDate, 'd MMMM yyyy', { locale: currentLocale })}</div>
             <div className="text-xs text-gray-500">
-              {format(selectedDate, 'EEEE', { locale: ru })}
-              {isToday && <span className="text-emerald-600 ml-1">(Сегодня)</span>}
+              {format(selectedDate, 'EEEE', { locale: currentLocale })}
+              {isToday && <span className="text-emerald-600 ml-1">({t('namaz.today')})</span>}
             </div>
           </div>
           <button onClick={() => navigateDate('next')} className="p-2 hover:bg-gray-100 rounded-lg touch-feedback">
@@ -83,8 +84,8 @@ function PrayerTimes() {
                         {getPrayerIcon(prayer.key)}
                       </div>
                       <div>
-                        <h3 className="font-semibold text-gray-800">{prayer.name}</h3>
-                        <p className="text-sm text-gray-500">{prayer.description}</p>
+                        <h3 className="font-semibold text-gray-800">{isCrh ? prayer.nameCrh : prayer.name}</h3>
+                        <p className="text-sm text-gray-500">{t(`namaz.${prayer.key}_desc`)}</p>
                         <p className="text-xs text-gray-400">{prayer.arabic}</p>
                       </div>
                     </div>
@@ -113,8 +114,7 @@ function PrayerTimes() {
             <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <Clock className="w-8 h-8 text-gray-400" />
             </div>
-            <h3 className="text-lg font-semibold text-gray-600 mb-2">Нет данных</h3>
-            <p className="text-sm text-gray-500">Расписание на выбранную дату недоступно</p>
+            <h3 className="text-lg font-semibold text-gray-600 mb-2">{t('namaz.no_data')}</h3>
           </div>
         )}
       </div>
@@ -123,7 +123,7 @@ function PrayerTimes() {
         <div className="px-4 pb-4">
           <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
             <p className="text-sm text-amber-700">
-              Войдите в аккаунт, чтобы отмечать совершённые намазы и следить за статистикой.
+              {t('namaz.login_prompt')}
             </p>
           </div>
         </div>
@@ -131,13 +131,12 @@ function PrayerTimes() {
 
       <div className="px-4 pb-20">
         <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4">
-          <h3 className="font-semibold text-emerald-800 mb-2">Информация</h3>
+          <h3 className="font-semibold text-emerald-800 mb-2">{t('namaz.info_title')}</h3>
           <p className="text-sm text-emerald-700">
-            Время намаза рассчитано для г. Симферополь по методу ДУМ Крыма.
-            Рекомендуется сверяться с местной мечетью.
+            {t('namaz.info_desc')}
           </p>
           <p className="text-xs text-emerald-600 mt-2">
-            Источник: Духовное управление мусульман Республики Крым (qmdi.ru)
+            {t('namaz.source')}
           </p>
         </div>
       </div>

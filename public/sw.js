@@ -48,19 +48,21 @@ self.addEventListener('fetch', e => {
   }
 
   // Cache static assets (Cache First, fallback to Network)
-  e.respondWith(
-    caches.match(e.request).then(r => {
-      if (r) return r;
-      return fetch(e.request).then(response => {
-        // Cache dynamically fetched static assets (js, css, woff2, etc)
-        if (response && response.status === 200 && response.type === 'basic') {
-          const resClone = response.clone();
-          caches.open(STATIC_CACHE).then(cache => cache.put(e.request, resClone));
-        }
-        return response;
-      });
-    })
-  );
+  if (e.request.method === 'GET') {
+    e.respondWith(
+      caches.match(e.request).then(r => {
+        if (r) return r;
+        return fetch(e.request).then(response => {
+          // Cache dynamically fetched static assets (js, css, woff2, etc)
+          if (response && response.status === 200 && response.type === 'basic') {
+            const resClone = response.clone();
+            caches.open(STATIC_CACHE).then(cache => cache.put(e.request, resClone));
+          }
+          return response;
+        });
+      })
+    );
+  }
 });
 
 self.addEventListener('push', function(event) {

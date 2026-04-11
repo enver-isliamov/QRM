@@ -1,17 +1,20 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Users, Shield, Settings, BarChart3, ChevronLeft, Edit, Trash2, Plus, X, Check, Save, BookOpen, ToggleRight, ChevronRight } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
+import { Users, Shield, Settings, BarChart3, ChevronLeft, Edit, Trash2, Plus, X, Check, Save, BookOpen, ToggleRight, ChevronRight, ArrowUp, ArrowDown, Heart } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import { useStore } from '../store/useStore'
 import useSWR from 'swr'
+import { toast } from 'sonner'
 
 type Tab = 'stats' | 'users' | 'events' | 'help' | 'meetings' | 'rituals' | 'settings' | 'moderation'
 type UserRow = { id: string; name: string; avatar_url?: string; role: string; provider: string; created_at: string }
 type EventRow = { id: string; event_date: string; title: string; title_crh?: string; description?: string; description_crh?: string; type: string }
-type HelpRow  = { id: string; title: string; type: string; urgency: string; status: string; location: string; created_at: string; responses_count?: number; author_id?: string }
-type MeetRow  = { id: string; village: string; organizer: string; meeting_date: string; status: string; attendees_count?: number }
+type HelpRow  = { id: string; title: string; type: string; urgency: string; status: string; location: string; created_at: string; responses_count?: number; author_id?: string; cloudtips_url?: string }
+type MeetRow  = { id: string; village: string; organizer: string; meeting_date: string; status: string; attendees_count?: number; fund_cloudtips_url?: string; fund_goal?: number }
 type RitualRow = { id: string; title: string; title_crh?: string; subtitle?: string; subtitle_crh?: string; icon?: string; sort_order?: number }
+type RitualStepRow = { id: number; ritual_id: string; step_order: number; title: string; title_crh?: string; description?: string; description_crh?: string }
 type ReportRow = { id: string; reporter_id: string; target_type: string; target_id: string; reason: string; description?: string; status: string; created_at: string }
 type AuditLogRow = { id: string; admin_id: string; action: string; target_type: string; target_id: string; created_at: string; admin?: { name: string; email: string } }
 
@@ -32,6 +35,7 @@ const fetcher = async (key: string) => {
 };
 
 export default function Admin() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const { profile } = useAuth()
   const { featureToggles, setFeatureToggle } = useStore()
@@ -42,13 +46,15 @@ export default function Admin() {
   const [helpReqs, setHelpReqs] = useState<HelpRow[]>([])
   const [meetingList, setMeetingList] = useState<MeetRow[]>([])
   const [rituals, setRituals] = useState<RitualRow[]>([])
+  const [ritualSteps, setRitualSteps] = useState<RitualStepRow[]>([])
+  const [selectedRitual, setSelectedRitual] = useState<RitualRow | null>(null)
   const [reports, setReports] = useState<ReportRow[]>([])
   const [auditLogs, setAuditLogs] = useState<AuditLogRow[]>([])
   const [loading, setLoading] = useState(false)
   const [editEvent, setEditEvent] = useState<Partial<EventRow> | null>(null)
   const [editUser, setEditUser] = useState<UserRow | null>(null)
   const [editRitual, setEditRitual] = useState<Partial<RitualRow> | null>(null)
-  const [toast, setToast] = useState('')
+  const [editStep, setEditStep] = useState<Partial<RitualStepRow> | null>(null)
 
   // Pagination state for users
   const [usersPage, setUsersPage] = useState(1);
@@ -59,26 +65,24 @@ export default function Admin() {
     fetcher
   );
 
-  const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(''), 2500) }
+  const [deleteConfirm, setDeleteConfirm] = useState<{ id: string | number; type: 'event' | 'ritual' | 'step'; title: string } | null>(null)
 
-  useEffect(() => { loadTab(tab) }, [tab])
-
-  const loadTab = async (t: Tab) => {
+  const loadTab = useCallback(async (tabName: Tab) => {
     setLoading(true)
     try {
-      if (t === 'stats' && !isModerator) {
+      if (tabName === 'stats' && !isModerator) {
         const { data } = await supabase.from('admin_stats').select('*').single()
         if (data) setStats(data as any)
       }
-      if (t === 'events') {
+      if (tabName === 'events') {
         const { data } = await supabase.from('ethno_events').select('*').order('event_date')
         if (data) setEvents(data as EventRow[])
       }
-      if (t === 'help') {
+      if (tabName === 'help') {
         const { data } = await supabase.from('help_requests_with_count').select('*').order('created_at', { ascending: false })
         if (data) setHelpReqs(data as HelpRow[])
       }
-      if (t === 'moderation') {
+      if (tabName === 'moderation') {
         const { data } = await supabase.from('help_requests_with_count').select('*').eq('status', 'pending').order('created_at', { ascending: false })
         if (data) setHelpReqs(data as HelpRow[])
         const { data: reportsData } = await supabase.from('reports').select('*').order('created_at', { ascending: false })
@@ -86,30 +90,37 @@ export default function Admin() {
         const { data: auditData } = await supabase.from('audit_logs').select('*, admin:profiles!audit_logs_admin_id_fkey(name, email)').order('created_at', { ascending: false }).limit(50)
         if (auditData) setAuditLogs(auditData as AuditLogRow[])
       }
-      if (t === 'meetings') {
-        const { data } = await supabase.from('meetings_with_stats').select('*').order('meeting_date', { ascending: false })
+      if (tabName === 'meetings') {
+        // Используем VIEW meetings_with_stats для получения вычисляемых полей
+        const { data, error } = await supabase.from('meetings_with_stats').select('*').order('meeting_date', { ascending: false })
+        console.log('DEBUG: Meetings from view:', data);
+        if (error) console.error('DEBUG: Fetch error:', error);
         if (data) setMeetingList(data as MeetRow[])
       }
-      if (t === 'rituals') {
+      if (tabName === 'rituals') {
         const { data } = await supabase.from('rituals').select('*').order('sort_order')
         if (data) setRituals(data as RitualRow[])
+        setSelectedRitual(null)
+        setRitualSteps([])
       }
     } catch (error) {
       console.error('Error loading tab data:', error)
-      showToast('Ошибка загрузки данных')
+      toast.error(t('admin.error_loading'))
     } finally {
       setLoading(false)
     }
-  }
+  }, [isModerator, t])
+
+  useEffect(() => { loadTab(tab) }, [tab, loadTab])
 
   const logAudit = async (action: string, target_type: string, target_id: string) => {
     if (!profile) return
-    await supabase.from('audit_logs').insert({
-      admin_id: profile.id,
-      action,
-      target_type,
-      target_id
+    const { error } = await supabase.rpc('log_admin_action', {
+      p_action: action,
+      p_target_type: target_type,
+      p_target_id: target_id
     })
+    if (error) console.error('Error logging audit:', error)
   }
 
   const saveEvent = async () => {
@@ -121,14 +132,32 @@ export default function Admin() {
       const { data } = await supabase.from('ethno_events').insert(editEvent).select().single()
       if (data) await logAudit('create', 'ethno_events', data.id)
     }
-    setEditEvent(null); loadTab('events'); showToast('Сохранено ✓')
+    setEditEvent(null); loadTab('events'); toast.success(t('admin.success_save'))
   }
 
-  const deleteEvent = async (id: string) => {
-    if (!confirm('Удалить событие?')) return
-    await supabase.from('ethno_events').delete().eq('id', id)
-    await logAudit('delete', 'ethno_events', id)
-    loadTab('events'); showToast('Удалено')
+  const handleDelete = async () => {
+    if (!deleteConfirm) return
+    const { id, type } = deleteConfirm
+    try {
+      if (type === 'event') {
+        await supabase.from('ethno_events').delete().eq('id', id)
+        await logAudit('delete', 'ethno_events', String(id))
+        loadTab('events')
+      } else if (type === 'ritual') {
+        await supabase.from('rituals').delete().eq('id', id)
+        await logAudit('delete', 'rituals', String(id))
+        loadTab('rituals')
+      } else if (type === 'step') {
+        await supabase.from('ritual_steps').delete().eq('id', id)
+        await logAudit('delete', 'ritual_steps', String(id))
+        if (selectedRitual) loadRitualSteps(selectedRitual.id)
+      }
+      toast.success(t('admin.success_delete'))
+    } catch (error) {
+      toast.error(t('admin.error_delete'))
+    } finally {
+      setDeleteConfirm(null)
+    }
   }
 
   const saveRitual = async () => {
@@ -140,14 +169,58 @@ export default function Admin() {
       const { data } = await supabase.from('rituals').insert(editRitual).select().single()
       if (data) await logAudit('create', 'rituals', data.id)
     }
-    setEditRitual(null); loadTab('rituals'); showToast('Обряд сохранен ✓')
+    setEditRitual(null); loadTab('rituals'); toast.success(t('admin.ritual_saved'))
   }
 
   const deleteRitual = async (id: string) => {
-    if (!confirm('Удалить обряд?')) return
-    await supabase.from('rituals').delete().eq('id', id)
-    await logAudit('delete', 'rituals', id)
-    loadTab('rituals'); showToast('Удалено')
+    const ritual = rituals.find(r => r.id === id)
+    setDeleteConfirm({ id, type: 'ritual', title: ritual?.title || 'обряд' })
+  }
+
+  const loadRitualSteps = async (ritualId: string) => {
+    setLoading(true)
+    try {
+      const { data } = await supabase.from('ritual_steps').select('*').eq('ritual_id', ritualId).order('step_order')
+      if (data) setRitualSteps(data as RitualStepRow[])
+    } catch (error) {
+      console.error('Error loading ritual steps:', error)
+      toast.error('Ошибка загрузки шагов')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const saveStep = async () => {
+    if (!editStep || !selectedRitual) return
+    const stepData = { ...editStep, ritual_id: selectedRitual.id }
+    if (editStep.id) {
+      await supabase.from('ritual_steps').update(stepData).eq('id', editStep.id)
+      await logAudit('update', 'ritual_steps', String(editStep.id))
+    } else {
+      await supabase.from('ritual_steps').insert(stepData)
+      await logAudit('create', 'ritual_steps', selectedRitual.id)
+    }
+    setEditStep(null); loadRitualSteps(selectedRitual.id); toast.success(t('admin.step_saved'))
+  }
+
+  const deleteStep = async (id: number) => {
+    const step = ritualSteps.find(s => s.id === id)
+    setDeleteConfirm({ id, type: 'step', title: step?.title || 'шаг' })
+  }
+
+  const moveStep = async (step: RitualStepRow, direction: 'up' | 'down') => {
+    if (!selectedRitual) return
+    const index = ritualSteps.findIndex(s => s.id === step.id)
+    if (direction === 'up' && index === 0) return
+    if (direction === 'down' && index === ritualSteps.length - 1) return
+
+    const otherStep = direction === 'up' ? ritualSteps[index - 1] : ritualSteps[index + 1]
+    
+    const { error } = await supabase.from('ritual_steps').update({ step_order: otherStep.step_order }).eq('id', step.id)
+    if (!error) {
+      await supabase.from('ritual_steps').update({ step_order: step.step_order }).eq('id', otherStep.id)
+      loadRitualSteps(selectedRitual.id)
+    }
   }
 
   const updateUserRole = async (uid: string, role: string) => {
@@ -165,52 +238,52 @@ export default function Admin() {
 
     if (error) {
       console.error('Error updating role:', error)
-      showToast('Ошибка при изменении роли')
+      toast.error(t('admin.error_role_update'))
       return
     }
     await logAudit('update_role', 'profiles', uid)
     if (usersData) {
       mutateUsers()
     }
-    setEditUser(null); showToast('Роль изменена ✓')
+    setEditUser(null); toast.success(t('admin.role_updated'))
   }
 
   const closeHelpRequest = async (id: string) => {
     await supabase.from('help_requests').update({ status: 'completed' }).eq('id', id)
     await logAudit('close', 'help_requests', id)
-    loadTab('help'); showToast('Обращение закрыто')
+    loadTab('help'); toast.success(t('admin.request_closed'))
   }
 
   const allTabs = [
-    { id: 'stats'    as Tab, label: 'Статистика',   icon: BarChart3, show: !isModerator },
-    { id: 'users'    as Tab, label: 'Пользователи', icon: Users,     show: !isModerator },
-    { id: 'moderation' as Tab, label: 'Модерация', icon: Shield,    show: true },
-    { id: 'events'   as Tab, label: 'Календарь',    icon: Settings,  show: true },
-    { id: 'help'     as Tab, label: 'Ярдым',         icon: Shield,    show: true },
-    { id: 'meetings' as Tab, label: 'Встречи',       icon: Settings,  show: true },
-    { id: 'rituals'  as Tab, label: 'Обряды',        icon: BookOpen,  show: true },
-    { id: 'settings' as Tab, label: 'Настройки',     icon: ToggleRight, show: !isModerator },
+    { id: 'stats'    as Tab, label: t('admin.stats'),   icon: BarChart3, show: !isModerator },
+    { id: 'users'    as Tab, label: t('admin.users'), icon: Users,     show: !isModerator },
+    { id: 'moderation' as Tab, label: t('admin.moderation'), icon: Shield,    show: true },
+    { id: 'events'   as Tab, label: t('admin.calendar'),    icon: Settings,  show: true },
+    { id: 'help'     as Tab, label: t('admin.yardym'),         icon: Shield,    show: true },
+    { id: 'meetings' as Tab, label: t('admin.meetings'),       icon: Settings,  show: true },
+    { id: 'rituals'  as Tab, label: t('admin.rituals'),        icon: BookOpen,  show: true },
+    { id: 'settings' as Tab, label: t('admin.settings'),     icon: ToggleRight, show: !isModerator },
   ]
   const tabs = allTabs.filter(t => t.show)
 
   const statCards = [
-    { key: 'total_users',     label: 'Пользователей',    color: 'text-purple-600', bg: 'bg-purple-50' },
-    { key: 'new_users_week',  label: 'За неделю',        color: 'text-blue-600',   bg: 'bg-blue-50' },
-    { key: 'active_help',     label: 'Обращений',        color: 'text-rose-600',   bg: 'bg-rose-50' },
-    { key: 'urgent_help',     label: 'Срочных',          color: 'text-orange-600', bg: 'bg-orange-50' },
-    { key: 'upcoming_meetings', label: 'Встреч',         color: 'text-amber-600',  bg: 'bg-amber-50' },
-    { key: 'prayers_today',   label: 'Намазов сегодня',  color: 'text-emerald-600',bg: 'bg-emerald-50' },
+    { key: 'total_users',     label: t('admin.stats_users'),    color: 'text-purple-600', bg: 'bg-purple-50' },
+    { key: 'new_users_week',  label: t('admin.stats_week'),        color: 'text-blue-600',   bg: 'bg-blue-50' },
+    { key: 'active_help',     label: t('admin.stats_requests'),        color: 'text-rose-600',   bg: 'bg-rose-50' },
+    { key: 'urgent_help',     label: t('admin.stats_urgent'),          color: 'text-orange-600', bg: 'bg-orange-50' },
+    { key: 'upcoming_meetings', label: t('admin.stats_meetings'),         color: 'text-amber-600',  bg: 'bg-amber-50' },
+    { key: 'prayers_today',   label: t('admin.stats_prayers'),  color: 'text-emerald-600',bg: 'bg-emerald-50' },
   ]
 
   return (
     <div className="animate-fade-in min-h-screen bg-gray-50">
       <div className="bg-white px-4 py-4 border-b border-gray-200">
         <button onClick={() => navigate('/sections')} className="flex items-center gap-2 text-gray-600 mb-2">
-          <ChevronLeft className="w-5 h-5" /><span>Разделы</span>
+          <ChevronLeft className="w-5 h-5" /><span>{t('admin.sections')}</span>
         </button>
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-bold text-gray-800">Админ-панель</h1>
+            <h1 className="text-xl font-bold text-gray-800">{t('admin.title')}</h1>
             <p className="text-sm text-gray-500">{profile?.name}</p>
           </div>
           <div className="w-10 h-10 bg-purple-100 rounded-xl flex items-center justify-center">
@@ -252,7 +325,7 @@ export default function Admin() {
             </div>
             <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4">
               <p className="text-sm text-emerald-700">
-                Данные из базы Supabase в реальном времени.{' '}
+                {t('admin.supabase_realtime')}{' '}
                 <a href="https://supabase.com/dashboard/project/cksqnhldbrvbmdwtjefq"
                   target="_blank" rel="noreferrer" className="font-medium underline">Dashboard →</a>
               </p>
@@ -264,7 +337,7 @@ export default function Admin() {
         {!loading && tab === 'users' && !isModerator && (
           <div className="space-y-3">
             {!usersData ? (
-              <div className="text-center py-4 text-gray-500">Загрузка...</div>
+              <div className="text-center py-4 text-gray-500">{t('admin.loading')}</div>
             ) : (
               <>
                 {usersData.data?.map(u => (
@@ -275,7 +348,7 @@ export default function Admin() {
                           {u.name?.[0]?.toUpperCase() ?? '?'}
                         </div>
                         <div>
-                          <p className="font-semibold text-gray-800">{u.name || 'Без имени'}</p>
+                          <p className="font-semibold text-gray-800">{u.name || t('admin.no_name')}</p>
                           <p className="text-xs text-gray-400">{u.provider} · {new Date(u.created_at).toLocaleDateString('ru-RU')}</p>
                         </div>
                       </div>
@@ -284,7 +357,7 @@ export default function Admin() {
                           u.role === 'admin' ? 'bg-purple-100 text-purple-700'
                             : u.role === 'moderator' ? 'bg-blue-100 text-blue-700'
                             : 'bg-gray-100 text-gray-600'
-                        }`}>{u.role === 'admin' ? 'Админ' : u.role === 'moderator' ? 'Мод.' : 'Польз.'}</span>
+                        }`}>{u.role === 'admin' ? t('admin.role_admin') : u.role === 'moderator' ? t('admin.role_moderator') : t('admin.role_user')}</span>
                         <button onClick={() => setEditUser(u as UserRow)} className="p-1.5 hover:bg-gray-100 rounded-lg">
                           <Edit className="w-4 h-4 text-gray-400" />
                         </button>
@@ -304,7 +377,7 @@ export default function Admin() {
                       <ChevronLeft className="w-5 h-5 text-gray-600" />
                     </button>
                     <span className="text-sm text-gray-600 font-medium">
-                      Страница {usersPage} из {Math.ceil(usersData.count / usersLimit)}
+                      {t('admin.page')} {usersPage} {t('admin.of')} {Math.ceil(usersData.count / usersLimit)}
                     </span>
                     <button 
                       onClick={() => setUsersPage(p => p + 1)}
@@ -324,16 +397,16 @@ export default function Admin() {
         {!loading && tab === 'moderation' && (
           <div className="space-y-6">
             <div>
-              <h2 className="text-lg font-bold text-gray-800 mb-3">Ожидают модерации (Ярдым)</h2>
+              <h2 className="text-lg font-bold text-gray-800 mb-3">{t('admin.pending_moderation')}</h2>
               {helpReqs.length === 0 ? (
-                <p className="text-sm text-gray-500 bg-white p-4 rounded-xl border border-gray-100">Нет обращений на модерации.</p>
+                <p className="text-sm text-gray-500 bg-white p-4 rounded-xl border border-gray-100">{t('admin.no_pending')}</p>
               ) : (
                 <div className="space-y-3">
                   {helpReqs.map(r => (
                     <div key={r.id} className="bg-white rounded-xl p-4 shadow-sm border border-amber-200">
                       <div className="flex items-start justify-between mb-2">
                         <p className="font-semibold text-gray-800 flex-1 min-w-0">{r.title}</p>
-                        <span className="text-xs px-2 py-0.5 rounded-full ml-2 flex-shrink-0 bg-amber-100 text-amber-700">На модерации</span>
+                        <span className="text-xs px-2 py-0.5 rounded-full ml-2 flex-shrink-0 bg-amber-100 text-amber-700">{t('admin.on_moderation')}</span>
                       </div>
                       <p className="text-sm text-gray-500 mb-3">{r.location}</p>
                       <div className="flex items-center gap-2">
@@ -344,14 +417,14 @@ export default function Admin() {
                             await supabase.from('user_notifications').insert({
                               user_id: r.author_id,
                               type: 'system',
-                              title: 'Ваше обращение одобрено',
-                              body: `Ваше обращение "${r.title}" прошло модерацию и опубликовано.`,
+                              title: t('admin.request_approved_title'),
+                              body: t('admin.request_approved_body', { title: r.title }),
                               link: `/yardym/${r.id}`
                             })
                           }
-                          loadTab('moderation'); showToast('Одобрено')
+                          loadTab('moderation'); toast.success(t('admin.approved'))
                         }} className="flex-1 bg-emerald-500 text-white py-2 rounded-xl text-sm font-medium hover:bg-emerald-600">
-                          Одобрить
+                          {t('admin.approve')}
                         </button>
                         <button onClick={async () => {
                           await supabase.from('help_requests').update({ status: 'rejected' }).eq('id', r.id)
@@ -360,13 +433,13 @@ export default function Admin() {
                             await supabase.from('user_notifications').insert({
                               user_id: r.author_id,
                               type: 'system',
-                              title: 'Ваше обращение отклонено',
-                              body: `Ваше обращение "${r.title}" не прошло модерацию.`
+                              title: t('admin.request_rejected_title'),
+                              body: t('admin.request_rejected_body', { title: r.title })
                             })
                           }
-                          loadTab('moderation'); showToast('Отклонено')
+                          loadTab('moderation'); toast.success(t('admin.rejected'))
                         }} className="flex-1 bg-rose-100 text-rose-700 py-2 rounded-xl text-sm font-medium hover:bg-rose-200">
-                          Отклонить
+                          {t('admin.reject')}
                         </button>
                       </div>
                     </div>
@@ -376,20 +449,20 @@ export default function Admin() {
             </div>
 
             <div>
-              <h2 className="text-lg font-bold text-gray-800 mb-3">Жалобы пользователей</h2>
+              <h2 className="text-lg font-bold text-gray-800 mb-3">{t('admin.reports')}</h2>
               {reports.length === 0 ? (
-                <p className="text-sm text-gray-500 bg-white p-4 rounded-xl border border-gray-100">Нет активных жалоб.</p>
+                <p className="text-sm text-gray-500 bg-white p-4 rounded-xl border border-gray-100">{t('admin.no_reports')}</p>
               ) : (
                 <div className="space-y-3">
                   {reports.map(r => (
                     <div key={r.id} className="bg-white rounded-xl p-4 shadow-sm border border-rose-200">
                       <div className="flex items-start justify-between mb-2">
                         <div>
-                          <span className="text-xs font-bold text-rose-600 uppercase tracking-wider">{r.target_type === 'help_request' ? 'Обращение' : 'Комментарий'}</span>
-                          <p className="font-medium text-gray-800 mt-1">Причина: {r.reason}</p>
+                          <span className="text-xs font-bold text-rose-600 uppercase tracking-wider">{r.target_type === 'help_request' ? t('admin.report_type_request') : t('admin.report_type_comment')}</span>
+                          <p className="font-medium text-gray-800 mt-1">{t('admin.report_reason')}: {r.reason}</p>
                         </div>
                         <span className={`text-xs px-2 py-0.5 rounded-full ml-2 flex-shrink-0 ${r.status === 'pending' ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-500'}`}>
-                          {r.status === 'pending' ? 'Новая' : 'Рассмотрена'}
+                          {r.status === 'pending' ? t('admin.report_status_new') : t('admin.report_status_reviewed')}
                         </span>
                       </div>
                       <p className="text-xs text-gray-400 mb-3">ID: {r.target_id}</p>
@@ -398,16 +471,16 @@ export default function Admin() {
                           <button onClick={async () => {
                             await supabase.from('reports').update({ status: 'reviewed' }).eq('id', r.id)
                             await logAudit('review', 'reports', r.id)
-                            loadTab('moderation'); showToast('Отмечено как рассмотренное')
+                            loadTab('moderation'); toast.success(t('admin.success_reviewed'))
                           }} className="flex-1 bg-emerald-50 text-emerald-600 py-2 rounded-xl text-sm font-medium hover:bg-emerald-100">
-                            Рассмотрено
+                            {t('admin.reviewed')}
                           </button>
                           <button onClick={async () => {
                             await supabase.from('reports').update({ status: 'dismissed' }).eq('id', r.id)
                             await logAudit('dismiss', 'reports', r.id)
-                            loadTab('moderation'); showToast('Жалоба отклонена')
+                            loadTab('moderation'); toast.success(t('admin.report_dismissed'))
                           }} className="flex-1 bg-gray-100 text-gray-600 py-2 rounded-xl text-sm font-medium hover:bg-gray-200">
-                            Отклонить
+                            {t('admin.reject')}
                           </button>
                         </div>
                       )}
@@ -418,26 +491,26 @@ export default function Admin() {
             </div>
 
             <div>
-              <h2 className="text-lg font-bold text-gray-800 mb-3">Журнал действий (Audit Log)</h2>
+              <h2 className="text-lg font-bold text-gray-800 mb-3">{t('admin.audit_log')}</h2>
               {auditLogs.length === 0 ? (
-                <p className="text-sm text-gray-500 bg-white p-4 rounded-xl border border-gray-100">Журнал пуст.</p>
+                <p className="text-sm text-gray-500 bg-white p-4 rounded-xl border border-gray-100">{t('admin.audit_empty')}</p>
               ) : (
                 <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm text-left">
                       <thead className="bg-gray-50 text-gray-500 font-medium">
                         <tr>
-                          <th className="px-4 py-3">Дата</th>
-                          <th className="px-4 py-3">Модератор</th>
-                          <th className="px-4 py-3">Действие</th>
-                          <th className="px-4 py-3">Объект</th>
+                          <th className="px-4 py-3">{t('admin.audit_date')}</th>
+                          <th className="px-4 py-3">{t('admin.audit_moderator')}</th>
+                          <th className="px-4 py-3">{t('admin.audit_action')}</th>
+                          <th className="px-4 py-3">{t('admin.audit_object')}</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-100">
                         {auditLogs.map(log => (
                           <tr key={log.id} className="hover:bg-gray-50">
                             <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{new Date(log.created_at).toLocaleString('ru-RU')}</td>
-                            <td className="px-4 py-3 font-medium text-gray-800">{log.admin?.name || 'Неизвестно'}</td>
+                            <td className="px-4 py-3 font-medium text-gray-800">{log.admin?.name || t('admin.unknown')}</td>
                             <td className="px-4 py-3 text-gray-600">{log.action}</td>
                             <td className="px-4 py-3 text-gray-400 font-mono text-xs">{log.target_type} ({log.target_id.slice(0, 8)}...)</td>
                           </tr>
@@ -456,7 +529,7 @@ export default function Admin() {
           <div>
             <button onClick={() => setEditEvent({ type: 'holiday' })}
               className="flex items-center gap-2 bg-emerald-500 text-white px-4 py-2.5 rounded-xl text-sm font-medium mb-4 hover:bg-emerald-600">
-              <Plus className="w-4 h-4" />Добавить событие
+              <Plus className="w-4 h-4" />{t('admin.add_event')}
             </button>
             <div className="space-y-3">
               {events.map(e => (
@@ -470,16 +543,16 @@ export default function Admin() {
                         e.type === 'holiday' ? 'bg-emerald-100 text-emerald-700'
                           : e.type === 'memorial' ? 'bg-rose-100 text-rose-700'
                           : 'bg-amber-100 text-amber-700'
-                      }`}>{e.type === 'holiday' ? 'Праздник' : e.type === 'memorial' ? 'Памятная дата' : 'Другое'}</span>
+                      }`}>{e.type === 'holiday' ? t('admin.event_type_holiday') : e.type === 'memorial' ? t('admin.event_type_memorial') : t('admin.event_type_other')}</span>
                     </div>
-                    <div className="flex gap-1 ml-2 flex-shrink-0">
-                      <button onClick={() => setEditEvent(e)} className="p-1.5 hover:bg-gray-100 rounded-lg">
-                        <Edit className="w-4 h-4 text-gray-400" />
-                      </button>
-                      <button onClick={() => deleteEvent(e.id)} className="p-1.5 hover:bg-rose-50 rounded-lg">
-                        <Trash2 className="w-4 h-4 text-rose-400" />
-                      </button>
-                    </div>
+                      <div className="flex gap-1 ml-2 flex-shrink-0">
+                        <button onClick={() => setEditEvent(e)} className="p-1.5 hover:bg-gray-100 rounded-lg">
+                          <Edit className="w-4 h-4 text-gray-400" />
+                        </button>
+                        <button onClick={() => setDeleteConfirm({ id: e.id, type: 'event', title: e.title })} className="p-1.5 hover:bg-rose-50 rounded-lg">
+                          <Trash2 className="w-4 h-4 text-rose-400" />
+                        </button>
+                      </div>
                   </div>
                 </div>
               ))}
@@ -495,16 +568,16 @@ export default function Admin() {
                 <div className="flex items-start justify-between mb-1">
                   <p className="font-semibold text-gray-800 flex-1 min-w-0 truncate">{r.title}</p>
                   <span className={`text-xs px-2 py-0.5 rounded-full ml-2 flex-shrink-0 ${r.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
-                    {r.status === 'active' ? 'Активно' : 'Закрыто'}
+                    {r.status === 'active' ? t('admin.active') : t('admin.closed')}
                   </span>
                 </div>
                 <p className="text-sm text-gray-500">{r.location}</p>
                 <div className="flex items-center justify-between mt-2">
-                  <span className="text-xs text-gray-400">Откликов: {r.responses_count ?? 0}</span>
+                  <span className="text-xs text-gray-400">{t('admin.responses')}: {r.responses_count ?? 0}</span>
                   {r.status === 'active' && (
                     <button onClick={() => closeHelpRequest(r.id)}
                       className="text-xs text-gray-500 border border-gray-200 px-3 py-1 rounded-lg hover:bg-gray-50">
-                      Закрыть
+                      {t('admin.close')}
                     </button>
                   )}
                 </div>
@@ -523,12 +596,18 @@ export default function Admin() {
                   <div className="flex-1 min-w-0">
                     <p className="font-semibold text-gray-800 truncate">{m.village}</p>
                     <p className="text-sm text-gray-500">{m.organizer} · {new Date(m.meeting_date).toLocaleDateString('ru-RU')}</p>
+                    {m.fund_cloudtips_url && (
+                      <div className="mt-1.5 flex items-center gap-1 text-[10px] font-medium text-rose-600 bg-rose-50 px-1.5 py-0.5 rounded w-fit">
+                        <Heart className="w-2.5 h-2.5 fill-rose-600" />
+                        <span>CloudTips: {m.fund_cloudtips_url.slice(0, 20)}...</span>
+                      </div>
+                    )}
                   </div>
                   <div className="text-right ml-2 flex-shrink-0">
                     <span className={`text-xs px-2 py-0.5 rounded-full ${m.status === 'upcoming' ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-500'}`}>
-                      {m.status === 'upcoming' ? 'Предстоит' : m.status}
+                      {m.status === 'upcoming' ? t('admin.upcoming') : m.status}
                     </span>
-                    <p className="text-xs text-gray-400 mt-0.5">{m.attendees_count ?? 0} чел.</p>
+                    <p className="text-xs text-gray-400 mt-0.5">{m.attendees_count ?? 0} {t('admin.people')}</p>
                   </div>
                 </div>
               </div>
@@ -539,33 +618,93 @@ export default function Admin() {
         {/* RITUALS */}
         {!loading && tab === 'rituals' && (
           <div>
-            <button onClick={() => setEditRitual({})}
-              className="flex items-center gap-2 bg-emerald-500 text-white px-4 py-2.5 rounded-xl text-sm font-medium mb-4 hover:bg-emerald-600">
-              <Plus className="w-4 h-4" />Добавить обряд
-            </button>
-            <div className="space-y-3">
-              {rituals.map(r => (
-                <div key={r.id} className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1 min-w-0 flex items-center gap-3">
-                      <div className="text-2xl">{r.icon || '📖'}</div>
-                      <div>
-                        <p className="font-semibold text-gray-800">{r.title}</p>
-                        {r.subtitle && <p className="text-sm text-gray-500 mt-0.5">{r.subtitle}</p>}
+            {!selectedRitual ? (
+              <>
+                <button onClick={() => setEditRitual({})}
+                  className="flex items-center gap-2 bg-emerald-500 text-white px-4 py-2.5 rounded-xl text-sm font-medium mb-4 hover:bg-emerald-600">
+                  <Plus className="w-4 h-4" />{t('admin.add_ritual')}
+                </button>
+                <div className="space-y-3">
+                  {rituals.map(r => (
+                    <div key={r.id} className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 cursor-pointer hover:border-emerald-200"
+                      onClick={() => { setSelectedRitual(r); loadRitualSteps(r.id); }}>
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1 min-w-0 flex items-center gap-3">
+                          <div className="text-2xl">{r.icon || '📖'}</div>
+                          <div>
+                            <p className="font-semibold text-gray-800">{r.title}</p>
+                            {r.subtitle && <p className="text-sm text-gray-500 mt-0.5">{r.subtitle}</p>}
+                          </div>
+                        </div>
+                        <div className="flex gap-1 ml-2 flex-shrink-0">
+                          <button onClick={(e) => { e.stopPropagation(); setEditRitual(r); }} className="p-1.5 hover:bg-gray-100 rounded-lg">
+                            <Edit className="w-4 h-4 text-gray-400" />
+                          </button>
+                          <button onClick={(e) => { e.stopPropagation(); deleteRitual(r.id); }} className="p-1.5 hover:bg-rose-50 rounded-lg">
+                            <Trash2 className="w-4 h-4 text-rose-400" />
+                          </button>
+                        </div>
                       </div>
                     </div>
-                    <div className="flex gap-1 ml-2 flex-shrink-0">
-                      <button onClick={() => setEditRitual(r)} className="p-1.5 hover:bg-gray-100 rounded-lg">
-                        <Edit className="w-4 h-4 text-gray-400" />
-                      </button>
-                      <button onClick={() => deleteRitual(r.id)} className="p-1.5 hover:bg-rose-50 rounded-lg">
-                        <Trash2 className="w-4 h-4 text-rose-400" />
-                      </button>
-                    </div>
-                  </div>
+                  ))}
                 </div>
-              ))}
-            </div>
+              </>
+            ) : (
+              <div>
+                <div className="flex items-center justify-between mb-4">
+                  <button onClick={() => setSelectedRitual(null)} className="flex items-center gap-1 text-gray-600">
+                    <ChevronLeft className="w-5 h-5" /><span>{t('admin.back_to_list')}</span>
+                  </button>
+                  <h2 className="font-bold text-gray-800">{selectedRitual.title} — {t('admin.steps')}</h2>
+                </div>
+                
+                <button onClick={() => setEditStep({ step_order: ritualSteps.length + 1 })}
+                  className="flex items-center gap-2 bg-emerald-500 text-white px-4 py-2.5 rounded-xl text-sm font-medium mb-4 hover:bg-emerald-600">
+                  <Plus className="w-4 h-4" />{t('admin.add_step')}
+                </button>
+
+                <div className="space-y-3">
+                  {ritualSteps.map((s, idx) => (
+                    <div key={s.id} className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+                      <div className="flex items-start gap-3">
+                        <div className="w-6 h-6 bg-gray-100 rounded-full flex items-center justify-center text-xs font-bold text-gray-500 flex-shrink-0">
+                          {idx + 1}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-gray-800">{s.title}</p>
+                          {s.description && <p className="text-sm text-gray-500 mt-1 line-clamp-2">{s.description}</p>}
+                        </div>
+                        <div className="flex flex-col gap-1">
+                          <div className="flex gap-1">
+                            <button onClick={() => moveStep(s, 'up')} disabled={idx === 0}
+                              className="p-1 hover:bg-gray-100 rounded disabled:opacity-30">
+                              <ArrowUp className="w-4 h-4 text-gray-400" />
+                            </button>
+                            <button onClick={() => moveStep(s, 'down')} disabled={idx === ritualSteps.length - 1}
+                              className="p-1 hover:bg-gray-100 rounded disabled:opacity-30">
+                              <ArrowDown className="w-4 h-4 text-gray-400" />
+                            </button>
+                          </div>
+                          <div className="flex gap-1">
+                            <button onClick={() => setEditStep(s)} className="p-1.5 hover:bg-gray-100 rounded-lg">
+                              <Edit className="w-4 h-4 text-gray-400" />
+                            </button>
+                            <button onClick={() => deleteStep(s.id)} className="p-1.5 hover:bg-rose-50 rounded-lg">
+                              <Trash2 className="w-4 h-4 text-rose-400" />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  {ritualSteps.length === 0 && (
+                    <div className="text-center py-8 bg-white rounded-xl border border-dashed border-gray-200 text-gray-500">
+                      {t('admin.no_steps')}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -573,9 +712,9 @@ export default function Admin() {
         {!loading && tab === 'settings' && (
           <div className="space-y-4">
             <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
-              <h2 className="font-semibold text-gray-800 mb-4">Управление разделами (Feature Toggles)</h2>
+              <h2 className="font-semibold text-gray-800 mb-4">{t('admin.feature_toggles')}</h2>
               <p className="text-sm text-gray-500 mb-4">
-                Включайте и отключайте разделы в приложении. Это полезно для безопасного тестирования новых функций на проде.
+                {t('admin.feature_toggles_desc')}
               </p>
               <div className="space-y-3">
                 {([
@@ -605,12 +744,43 @@ export default function Admin() {
         )}
       </div>
 
+      {/* Delete Confirmation Modal */}
+      {deleteConfirm && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center modal-overlay" onClick={() => setDeleteConfirm(null)}>
+          <div className="bg-white w-[90%] max-w-sm rounded-2xl p-6 shadow-xl animate-scale-in" onClick={e => e.stopPropagation()}>
+            <div className="text-center">
+              <div className="w-16 h-16 bg-rose-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Trash2 className="w-8 h-8 text-rose-600" />
+              </div>
+              <h3 className="text-lg font-bold text-gray-900 mb-2">{t('admin.confirm_delete')}</h3>
+              <p className="text-sm text-gray-500 mb-6">
+                {t('admin.confirm_delete_desc', { title: deleteConfirm.title })}
+              </p>
+              <div className="flex gap-3">
+                <button 
+                  onClick={() => setDeleteConfirm(null)}
+                  className="flex-1 py-3 border border-gray-200 rounded-xl text-gray-600 font-medium hover:bg-gray-50"
+                >
+                  {t('admin.cancel')}
+                </button>
+                <button 
+                  onClick={handleDelete}
+                  className="flex-1 bg-rose-500 text-white py-3 rounded-xl font-medium hover:bg-rose-600"
+                >
+                  {t('admin.delete')}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Edit Event Modal */}
       {editEvent && (
         <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center modal-overlay" onClick={() => setEditEvent(null)}>
           <div className="bg-white w-full max-w-md rounded-t-2xl sm:rounded-2xl p-6 animate-slide-up max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-bold text-gray-800">{editEvent.id ? 'Редактировать' : 'Добавить'} событие</h2>
+              <h2 className="text-xl font-bold text-gray-800">{editEvent.id ? t('admin.edit') : t('admin.add')} {t('admin.event')}</h2>
               <button onClick={() => setEditEvent(null)}><X className="w-6 h-6 text-gray-400" /></button>
             </div>
             <div className="space-y-4">
@@ -633,15 +803,15 @@ export default function Admin() {
                 <select value={editEvent.type ?? 'holiday'}
                   onChange={e => setEditEvent(v => ({ ...v, type: e.target.value }))}
                   className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent">
-                  <option value="holiday">Праздник</option>
-                  <option value="memorial">Памятная дата</option>
-                  <option value="custom">Другое</option>
+                  <option value="holiday">{t('admin.event_type_holiday')}</option>
+                  <option value="memorial">{t('admin.event_type_memorial')}</option>
+                  <option value="custom">{t('admin.event_type_other')}</option>
                 </select>
               </div>
               <div className="flex gap-3">
-                <button onClick={() => setEditEvent(null)} className="flex-1 py-3 border border-gray-200 rounded-xl text-gray-600">Отмена</button>
+                <button onClick={() => setEditEvent(null)} className="flex-1 py-3 border border-gray-200 rounded-xl text-gray-600">{t('admin.cancel')}</button>
                 <button onClick={saveEvent} className="flex-1 bg-emerald-500 text-white py-3 rounded-xl font-medium hover:bg-emerald-600 flex items-center justify-center gap-2">
-                  <Save className="w-4 h-4" />Сохранить
+                  <Save className="w-4 h-4" />{t('admin.save')}
                 </button>
               </div>
             </div>
@@ -654,12 +824,12 @@ export default function Admin() {
         <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center modal-overlay" onClick={() => setEditUser(null)}>
           <div className="bg-white w-full max-w-md rounded-t-2xl sm:rounded-2xl p-6 animate-slide-up" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-bold text-gray-800">Изменить роль</h2>
+              <h2 className="text-xl font-bold text-gray-800">{t('admin.edit_role')}</h2>
               <button onClick={() => setEditUser(null)}><X className="w-6 h-6 text-gray-400" /></button>
             </div>
             <p className="text-gray-600 mb-4">{editUser.name}</p>
             <div className="space-y-2">
-              {([['user','Пользователь'],['moderator','Модератор'],['admin','Администратор']] as [string,string][]).map(([role, label]) => (
+              {([['user',t('admin.role_user_full')],['moderator',t('admin.role_moderator_full')],['admin',t('admin.role_admin_full')]] as [string,string][]).map(([role, label]) => (
                 <button key={role} onClick={() => updateUserRole(editUser.id, role)}
                   className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border ${
                     editUser.role === role ? 'border-purple-500 bg-purple-50 text-purple-700' : 'border-gray-200 text-gray-600 hover:bg-gray-50'
@@ -678,7 +848,7 @@ export default function Admin() {
         <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center modal-overlay" onClick={() => setEditRitual(null)}>
           <div className="bg-white w-full max-w-md rounded-t-2xl sm:rounded-2xl p-6 animate-slide-up max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-bold text-gray-800">{editRitual.id ? 'Редактировать обряд' : 'Новый обряд'}</h2>
+              <h2 className="text-xl font-bold text-gray-800">{editRitual.id ? t('admin.edit_ritual') : t('admin.new_ritual')}</h2>
               <button onClick={() => setEditRitual(null)}><X className="w-6 h-6 text-gray-400" /></button>
             </div>
             <div className="space-y-4">
@@ -715,9 +885,9 @@ export default function Admin() {
                 </div>
               </div>
               <div className="flex gap-3 pt-2">
-                <button onClick={() => setEditRitual(null)} className="flex-1 py-3 border border-gray-200 rounded-xl text-gray-600">Отмена</button>
+                <button onClick={() => setEditRitual(null)} className="flex-1 py-3 border border-gray-200 rounded-xl text-gray-600">{t('admin.cancel')}</button>
                 <button onClick={saveRitual} className="flex-1 bg-emerald-500 text-white rounded-xl py-3 font-semibold hover:bg-emerald-600 flex items-center justify-center gap-2">
-                  <Save className="w-5 h-5" /> Сохранить
+                  <Save className="w-5 h-5" /> {t('admin.save')}
                 </button>
               </div>
             </div>
@@ -725,9 +895,48 @@ export default function Admin() {
         </div>
       )}
 
-      {toast && (
-        <div className="fixed bottom-20 left-1/2 -translate-x-1/2 bg-gray-800 text-white px-4 py-2 rounded-full text-sm flex items-center gap-2 shadow-lg z-[100]">
-          <Check className="w-4 h-4 text-emerald-400" />{toast}
+      {/* Edit Step Modal */}
+      {editStep && (
+        <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center modal-overlay" onClick={() => setEditStep(null)}>
+          <div className="bg-white w-full max-w-md rounded-t-2xl sm:rounded-2xl p-6 animate-slide-up max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-bold text-gray-800">{editStep.id ? t('admin.edit_step') : t('admin.new_step')}</h2>
+              <button onClick={() => setEditStep(null)}><X className="w-6 h-6 text-gray-400" /></button>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Заголовок (RU)</label>
+                <input type="text" value={editStep.title || ''} onChange={e => setEditStep({...editStep, title: e.target.value})}
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Заголовок (CRH)</label>
+                <input type="text" value={editStep.title_crh || ''} onChange={e => setEditStep({...editStep, title_crh: e.target.value})}
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Описание (RU)</label>
+                <textarea value={editStep.description || ''} onChange={e => setEditStep({...editStep, description: e.target.value})} rows={3}
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Описание (CRH)</label>
+                <textarea value={editStep.description_crh || ''} onChange={e => setEditStep({...editStep, description_crh: e.target.value})} rows={3}
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Порядок (step_order)</label>
+                <input type="number" value={editStep.step_order || 0} onChange={e => setEditStep({...editStep, step_order: parseInt(e.target.value)})}
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+              </div>
+              <div className="flex gap-3 pt-2">
+                <button onClick={() => setEditStep(null)} className="flex-1 py-3 border border-gray-200 rounded-xl text-gray-600">{t('admin.cancel')}</button>
+                <button onClick={saveStep} className="flex-1 bg-emerald-500 text-white rounded-xl py-3 font-semibold hover:bg-emerald-600 flex items-center justify-center gap-2">
+                  <Save className="w-5 h-5" /> {t('admin.save')}
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>
